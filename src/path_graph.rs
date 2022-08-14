@@ -4,11 +4,11 @@ use grid_util::direction::Direction;
 use grid_util::grid::{BoolGrid, Grid, SimpleGrid};
 use grid_util::point::Point;
 
-use crate::pf::astar_contextual_neighbours;
+use crate::astar_jps::astar_jps;
 use core::fmt;
 
 #[derive(Clone, Debug)]
-pub struct PathGraph {
+pub struct PathingGrid {
     pub grid: BoolGrid,
     pub neighbours: SimpleGrid<u8>,
     pub components: UnionFind<usize>,
@@ -18,9 +18,9 @@ pub struct PathGraph {
 const IMPROVED_PRUNING: bool = true;
 const HEURISTIC_FACTOR: f32 = 1.2;
 
-impl Default for PathGraph {
-    fn default() -> PathGraph {
-        PathGraph {
+impl Default for PathingGrid {
+    fn default() -> PathingGrid {
+        PathingGrid {
             grid: BoolGrid::default(),
             neighbours: SimpleGrid::default(),
             components: UnionFind::new(0),
@@ -28,15 +28,16 @@ impl Default for PathGraph {
         }
     }
 }
-impl PathGraph {
-    pub fn new(width: usize, height: usize) -> PathGraph {
-        PathGraph {
+impl PathingGrid {
+    pub fn new(width: usize, height: usize) -> PathingGrid {
+        PathingGrid {
             grid: BoolGrid::new(width, height, true),
             neighbours: SimpleGrid::new(width, height, 0),
             components: UnionFind::new(width * height),
             components_dirty: false,
         }
     }
+    /// Regenerates the components if they are marked as dirty.
     pub fn update(&mut self) {
         if self.components_dirty {
             info!("Components are dirty: regenerating components");
@@ -70,6 +71,9 @@ impl PathGraph {
             }
         }
     }
+    pub fn get_component(&self, point: &Point) -> usize {
+        self.components.find(self.get_ix(point))
+    }
     pub fn get_neighbours(&self, point: Point) -> Vec<Point> {
         point
             .moore_neighborhood()
@@ -77,6 +81,11 @@ impl PathGraph {
             .filter(|p| self.can_move_to(*p))
             .collect::<Vec<Point>>()
     }
+    pub fn get_ix(&self, point: &Point) -> usize {
+        self.grid.get_ix(point.x as usize, point.y as usize)
+    }
+    /// Updates a position on the grid. Joins newly connected components and flags the components
+    /// as dirty if components are (potentially) broken apart into multiple.
     pub fn set(&mut self, x: usize, y: usize, blocked: bool) {
         let p = Point::new(x as i32, y as i32);
         if self.grid.get(x, y) != blocked && blocked {
@@ -186,12 +195,6 @@ impl PathGraph {
         }
         self.jump(&new_n, cost + 1, direction, goal)
     }
-    pub fn get_ix(&self, point: &Point) -> usize {
-        self.grid.get_ix(point.x as usize, point.y as usize)
-    }
-    pub fn get_component(&self, point: &Point) -> usize {
-        self.components.find(self.get_ix(point))
-    }
     pub fn neighbours_unreachable(&self, start: &Point, goal: &Point) -> bool {
         if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
             let start_ix = self.get_ix(start);
@@ -266,7 +269,7 @@ impl PathGraph {
         if goals.is_empty() {
             return None;
         }
-        let result = astar_contextual_neighbours(
+        let result = astar_jps(
             &start,
             |&parent, node| {
                 self.jps_neighbours(parent, node, &|node_pos| goals.contains(&node_pos))
@@ -290,7 +293,7 @@ impl PathGraph {
                 info!("No neighbours of {} are reachable from {}", goal, start);
                 return None;
             }
-            astar_contextual_neighbours(
+            astar_jps(
                 &start,
                 |&parent, node| {
                     self.jps_neighbours(parent, node, &|node_pos| {
@@ -305,7 +308,7 @@ impl PathGraph {
                 info!("{} is not reachable from {}", start, goal);
                 return None;
             }
-            astar_contextual_neighbours(
+            astar_jps(
                 &start,
                 |&parent, node| self.jps_neighbours(parent, node, &|node_pos| *node_pos == goal),
                 |&point| (point.move_distance(&goal) as f32 * HEURISTIC_FACTOR) as i32,
@@ -315,7 +318,7 @@ impl PathGraph {
         .map(|(v, _c)| v)
     }
 }
-impl fmt::Display for PathGraph {
+impl fmt::Display for PathingGrid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for y in 0..self.grid.height {
             let values = (0..self.grid.width)
@@ -333,7 +336,7 @@ mod tests {
 
     #[test]
     fn test_components() {
-        let mut path_graph = PathGraph::new(3, 4);
+        let mut path_graph = PathingGrid::new(3, 4);
         path_graph.grid.set(1, 1, false);
         path_graph.generate_components();
         assert!(!path_graph.components.equiv(0, 4))

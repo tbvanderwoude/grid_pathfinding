@@ -52,7 +52,10 @@ where
     path.into_iter().rev().cloned().collect()
 }
 
-pub fn astar_contextual_neighbours<N, C, FN, IN, FH, FS>(
+/// Variant of [pathfinding's astar function](https://docs.rs/pathfinding/latest/pathfinding/directed/astar/index.html) which passes the node parent to the successor function
+/// which enables the JPS implementation to generate successors based on the parent if there is one
+/// as it should.
+pub fn astar_jps<N, C, FN, IN, FH, FS>(
     start: &N,
     mut successors: FN,
     mut heuristic: FH,
