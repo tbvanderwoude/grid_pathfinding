@@ -8,9 +8,6 @@ edition = "2021"
 
 [dependencies]
 rand = "^0.8"
-codepage-437 = "^0.1"
-bresenham = "^0.1"
-pathfinding = "^2.0"
 ron = "0.6.2"
 num_enum = "^0.5"
 strum = "^0.20"
@@ -22,6 +19,5 @@ itertools = "^0.9"
 log = "^0.4"
 num-traits = "^0.2"
 serde = { version = "^1", features = ["serde_derive"] }
-ggez = { git = "https://github.com/ggez/ggez", branch = "master" }
 grid_util = { git = "https://github.com/tbvanderwoude/grid_util", branch = "main" }
 
