@@ -1,3 +1,7 @@
+/// This module implements a variant of
+/// [pathfinding's astar function](https://docs.rs/pathfinding/latest/pathfinding/directed/astar/index.html)
+/// which enables the JPS implementation to generate successors based on the parent if there is one
+/// as it should.
 use indexmap::map::Entry::{Occupied, Vacant};
 use indexmap::IndexMap;
 use num_traits::Zero;
@@ -52,9 +56,6 @@ where
     path.into_iter().rev().cloned().collect()
 }
 
-/// Variant of [pathfinding's astar function](https://docs.rs/pathfinding/latest/pathfinding/directed/astar/index.html) which passes the node parent to the successor function
-/// which enables the JPS implementation to generate successors based on the parent if there is one
-/// as it should.
 pub fn astar_jps<N, C, FN, IN, FH, FS>(
     start: &N,
     mut successors: FN,
