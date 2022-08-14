@@ -7,17 +7,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rand = "^0.8"
-ron = "0.6.2"
-num_enum = "^0.5"
-strum = "^0.20"
-strum_macros = "^0.20"
 petgraph = "0.5.1"
 indexmap = "^1.6"
-rand_derive2 = "^0.1"
 itertools = "^0.9"
 log = "^0.4"
 num-traits = "^0.2"
-serde = { version = "^1", features = ["serde_derive"] }
 grid_util = { git = "https://github.com/tbvanderwoude/grid_util", branch = "main" }
 
