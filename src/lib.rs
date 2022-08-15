@@ -15,6 +15,7 @@ use petgraph::unionfind::UnionFind;
 
 use crate::astar_jps::astar_jps;
 use core::fmt;
+use std::collections::VecDeque;
 
 /// [PathingGrid] maintains information about components using a [UnionFind] structure in addition to the raw
 /// [bool] grid values in the [BoolGrid] that determine whether a space is occupied ([true]) or
@@ -40,6 +41,21 @@ impl Default for PathingGrid {
             components_dirty: false,
         }
     }
+}
+/// Turns a compact path into a concrete path on the grid which can be followed step by step.
+pub fn expand_path(path: Vec<Point>) -> Vec<Point> {
+    let mut path_queue = path.into_iter().collect::<VecDeque<Point>>();
+    let mut expanded_path: Vec<Point> = Vec::new();
+    let mut current = path_queue.pop_front().unwrap();
+    expanded_path.push(current);
+    for next in path_queue {
+        while current.move_distance(&next) >= 1 {
+            let delta = current.dir(&next);
+            current = current + delta;
+            expanded_path.push(current);
+        }
+    }
+    expanded_path
 }
 impl PathingGrid {
     fn get_neighbours(&self, point: Point) -> Vec<Point> {
@@ -217,7 +233,7 @@ impl PathingGrid {
     }
     /// Computes a path from start to one of the given goals. This is done by taking the
     /// [Chebyshev distance](https://en.wikipedia.org/wiki/Chebyshev_distance)
-    /// to the closest goal.
+    /// to the closest goal as heuristic value.
     pub fn get_path_multiple_goals(
         &self,
         start: Point,
