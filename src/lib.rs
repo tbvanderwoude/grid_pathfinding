@@ -82,9 +82,6 @@ impl PathingGrid {
             .filter(|p| self.can_move_to(*p))
             .collect::<Vec<Point>>()
     }
-    fn get_ix_point(&self, point: &Point) -> usize {
-        self.grid.get_ix(point.x as usize, point.y as usize)
-    }
     fn can_move_to(&self, pos: Point) -> bool {
         self.in_bounds(pos.x, pos.y) && !self.grid.get(pos.x as usize, pos.y as usize)
     }
@@ -144,7 +141,7 @@ impl PathingGrid {
         }
         let comb_mask = neighbours & n_mask;
         (
-            (0..=8)
+            (0..8)
                 .filter(|x| comb_mask & (1 << *x) != 0)
                 .map(|d| (node.moore_neighbor(d), 1))
                 .collect::<Vec<(Point, i32)>>(),
