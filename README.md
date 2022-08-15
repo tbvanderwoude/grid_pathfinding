@@ -6,4 +6,4 @@ A grid-based pathfinding system. Implements [Jump Point Search](https://en.wikip
 to avoid flood-filling behaviour if no path exists.
 
 ### Examples
-See `examples/` for some examples on how to initialize the relevant datastructures and find paths.
+See [examples](examples/) for some examples on how to initialize the relevant datastructures and find paths.
