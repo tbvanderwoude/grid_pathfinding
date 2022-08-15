@@ -17,6 +17,23 @@ use crate::astar_jps::astar_jps;
 use core::fmt;
 use std::collections::VecDeque;
 
+/// Turns waypoints into a path on the grid which can be followed step by step. Due to symmetry this
+/// is typically just one of many ways to follow the waypoints.
+pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
+    let mut waypoint_queue = waypoints.into_iter().collect::<VecDeque<Point>>();
+    let mut path: Vec<Point> = Vec::new();
+    let mut current = waypoint_queue.pop_front().unwrap();
+    path.push(current);
+    for next in waypoint_queue {
+        while current.move_distance(&next) >= 1 {
+            let delta = current.dir(&next);
+            current = current + delta;
+            path.push(current);
+        }
+    }
+    path
+}
+
 /// [PathingGrid] maintains information about components using a [UnionFind] structure in addition to the raw
 /// [bool] grid values in the [BoolGrid] that determine whether a space is occupied ([true]) or
 /// empty ([false]). It also records neighbours in binary ([u8]) format for fast lookups during pathfinding.
@@ -41,21 +58,6 @@ impl Default for PathingGrid {
             components_dirty: false,
         }
     }
-}
-/// Turns a compact path into a concrete path on the grid which can be followed step by step.
-pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
-    let mut waypoint_queue = waypoints.into_iter().collect::<VecDeque<Point>>();
-    let mut path: Vec<Point> = Vec::new();
-    let mut current = waypoint_queue.pop_front().unwrap();
-    path.push(current);
-    for next in waypoint_queue {
-        while current.move_distance(&next) >= 1 {
-            let delta = current.dir(&next);
-            current = current + delta;
-            path.push(current);
-        }
-    }
-    path
 }
 impl PathingGrid {
     fn get_neighbours(&self, point: Point) -> Vec<Point> {
@@ -231,17 +233,6 @@ impl PathingGrid {
             true
         }
     }
-    /// Computes a path from start to one of the given goals. This is done by taking the
-    /// [Chebyshev distance](https://en.wikipedia.org/wiki/Chebyshev_distance)
-    /// to the closest goal as heuristic value.
-    pub fn get_path_multiple_goals(
-        &self,
-        start: Point,
-        goals: Vec<&Point>,
-    ) -> Option<(Point, Vec<Point>)> {
-        self.get_waypoints_multiple_goals(start, goals)
-            .map(|(x, y)| (x, waypoints_to_path(y)))
-    }
     /// Computes a path from start to goal using JPS. If approximate is [true], then it will
     /// path to one of the neighbours of the goal, which is useful if goal itself is
     /// blocked. The heuristic used is the
@@ -256,7 +247,18 @@ impl PathingGrid {
             .map(|x| waypoints_to_path(x))
     }
 
-    /// The raw waypoints (jump points) from which [Self::get_path_multiple_goals] makes a path.
+    /// Computes a path from start to one of the given goals. This is done by taking the
+    /// [Chebyshev distance](https://en.wikipedia.org/wiki/Chebyshev_distance)
+    /// to the closest goal as heuristic value.
+    pub fn get_path_multiple_goals(
+        &self,
+        start: Point,
+        goals: Vec<&Point>,
+    ) -> Option<(Point, Vec<Point>)> {
+        self.get_waypoints_multiple_goals(start, goals)
+            .map(|(x, y)| (x, waypoints_to_path(y)))
+    }
+    /// The raw waypoints (jump points) from which [get_path_multiple_goals](Self::get_path_multiple_goals) makes a path.
     pub fn get_waypoints_multiple_goals(
         &self,
         start: Point,
@@ -278,7 +280,7 @@ impl PathingGrid {
         );
         result.map(|(v, _c)| (*v.last().unwrap(), v))
     }
-    /// The raw waypoints (jump points) from which [Self::get_path_single_goal] makes a path.
+    /// The raw waypoints (jump points) from which [get_path_single_goal](Self::get_path_single_goal)makes a path.
     pub fn get_waypoints_single_goal(
         &self,
         start: Point,
@@ -357,14 +359,14 @@ impl PathingGrid {
 }
 impl fmt::Display for PathingGrid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "Grid:");
+        writeln!(f, "Grid:")?;
         for y in 0..self.grid.height {
             let values = (0..self.grid.width)
                 .map(|x| self.grid.get(x, y) as i32)
                 .collect::<Vec<i32>>();
             writeln!(f, "{:?}", values)?;
         }
-        writeln!(f, "\nNeighbours:");
+        writeln!(f, "\nNeighbours:")?;
         for y in 0..self.neighbours.height {
             let values = (0..self.neighbours.width)
                 .map(|x| self.neighbours.get(x, y) as i32)

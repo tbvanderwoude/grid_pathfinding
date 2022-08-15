@@ -17,10 +17,11 @@ fn main() {
     println!("{}", pathing_grid);
     let start = Point::new(0, 0);
     let end = Point::new(2, 2);
-    if let Some(path) = pathing_grid.get_waypoints_single_goal(start, end, false) {
-        println!("A path has been found:");
-        for p in path {
-            println!("{:?}", p);
-        }
+    let path = pathing_grid
+        .get_path_single_goal(start, end, false)
+        .unwrap();
+    println!("Path:");
+    for p in path {
+        println!("{:?}", p);
     }
 }
