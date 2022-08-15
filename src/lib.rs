@@ -41,14 +41,6 @@ impl Default for PathingGrid {
     }
 }
 impl PathingGrid {
-    pub fn new(width: usize, height: usize) -> PathingGrid {
-        PathingGrid {
-            grid: BoolGrid::new(width, height, true),
-            neighbours: SimpleGrid::new(width, height, 0),
-            components: UnionFind::new(width * height),
-            components_dirty: false,
-        }
-    }
     /// Regenerates the components if they are marked as dirty.
     pub fn update(&mut self) {
         if self.components_dirty {
@@ -83,38 +75,6 @@ impl PathingGrid {
             }
         }
     }
-    /// Updates a position on the grid. Joins newly connected components and flags the components
-    /// as dirty if components are (potentially) broken apart into multiple.
-    pub fn set(&mut self, x: usize, y: usize, blocked: bool) {
-        let p = Point::new(x as i32, y as i32);
-        if self.grid.get(x, y) != blocked && blocked {
-            self.components_dirty = true;
-        } else {
-            for p in self.get_neighbours(p) {
-                self.components.union(
-                    self.grid.get_ix(x, y),
-                    self.grid.get_ix(p.x as usize, p.y as usize),
-                );
-            }
-        }
-        for i in 0..=8 {
-            let neighbor = p.moore_neighbor(i);
-            if self.in_bounds(neighbor.x, neighbor.y) {
-                let ix = (i + 4) % 8;
-                let mut n_mask = self.neighbours.get_point(neighbor);
-                if blocked {
-                    n_mask &= !(1 << ix);
-                } else {
-                    n_mask |= 1 << ix;
-                }
-                self.neighbours.set_point(neighbor, n_mask);
-            }
-        }
-        self.grid.set(x, y, blocked);
-    }
-    fn get_component(&self, point: &Point) -> usize {
-        self.components.find(self.get_ix(point))
-    }
     fn get_neighbours(&self, point: Point) -> Vec<Point> {
         point
             .moore_neighborhood()
@@ -122,7 +82,7 @@ impl PathingGrid {
             .filter(|p| self.can_move_to(*p))
             .collect::<Vec<Point>>()
     }
-    fn get_ix(&self, point: &Point) -> usize {
+    fn get_ix_point(&self, point: &Point) -> usize {
         self.grid.get_ix(point.x as usize, point.y as usize)
     }
     fn can_move_to(&self, pos: Point) -> bool {
@@ -140,6 +100,20 @@ impl PathingGrid {
             !self.indexed_neighbor(node, 3 + dir_num) || !self.indexed_neighbor(node, 5 + dir_num)
         } else {
             !self.indexed_neighbor(node, 2 + dir_num) || !self.indexed_neighbor(node, dir_num + 6)
+        }
+    }
+    fn unreachable(&self, start: &Point, goal: &Point) -> bool {
+        if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
+            let start_ix = self.get_ix_point(start);
+            let goal_ix = self.get_ix_point(goal);
+            if self.components.equiv(start_ix, goal_ix) {
+                false
+            } else {
+                info!("{} and {} are not equivalent components", start_ix, goal_ix);
+                true
+            }
+        } else {
+            true
         }
     }
     fn pruned_neighborhood(&self, dir: Direction, node: &Point) -> (Vec<(Point, i32)>, bool) {
@@ -207,30 +181,6 @@ impl PathingGrid {
         }
         self.jump(&new_n, cost + 1, direction, goal)
     }
-    fn neighbours_unreachable(&self, start: &Point, goal: &Point) -> bool {
-        if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
-            let start_ix = self.get_ix(start);
-            !goal.moore_neighborhood().iter().any(|p| {
-                self.in_bounds(p.x, p.y) && self.components.equiv(start_ix, self.get_ix(&p))
-            })
-        } else {
-            true
-        }
-    }
-    fn unreachable(&self, start: &Point, goal: &Point) -> bool {
-        if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
-            let start_ix = self.get_ix(start);
-            let goal_ix = self.get_ix(goal);
-            if self.components.equiv(start_ix, goal_ix) {
-                false
-            } else {
-                info!("{} and {} are not equivalent components", start_ix, goal_ix);
-                true
-            }
-        } else {
-            true
-        }
-    }
     fn pathfinding_neighborhood(&self, pos: &Point) -> Vec<(Point, i32)> {
         pos.moore_neighborhood()
             .into_iter()
@@ -238,12 +188,7 @@ impl PathingGrid {
             .map(|p| (p, 1))
             .collect::<Vec<_>>()
     }
-    fn jps_neighbours<F>(
-        &self,
-        parent: Option<&Point>,
-        node: &Point,
-        goal: &F,
-    ) -> Vec<(Point, i32)>
+    fn jps_neighbours<F>(&self, parent: Option<&Point>, node: &Point, goal: &F) -> Vec<(Point, i32)>
     where
         F: Fn(&Point) -> bool,
     {
@@ -271,6 +216,19 @@ impl PathingGrid {
                 succ
             }
             None => self.pathfinding_neighborhood(node),
+        }
+    }
+    pub fn get_component(&self, point: &Point) -> usize {
+        self.components.find(self.get_ix_point(point))
+    }
+    pub fn neighbours_unreachable(&self, start: &Point, goal: &Point) -> bool {
+        if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
+            let start_ix = self.get_ix_point(start);
+            !goal.moore_neighborhood().iter().any(|p| {
+                self.in_bounds(p.x, p.y) && self.components.equiv(start_ix, self.get_ix_point(&p))
+            })
+        } else {
+            true
         }
     }
     pub fn get_path_multiple_goals(
@@ -342,12 +300,61 @@ impl fmt::Display for PathingGrid {
     }
 }
 
+impl Grid<bool> for PathingGrid {
+    fn new(width: usize, height: usize, default_value: bool) -> Self {
+        PathingGrid {
+            grid: BoolGrid::new(width, height, default_value),
+            neighbours: SimpleGrid::new(width, height, 0),
+            components: UnionFind::new(width * height),
+            components_dirty: false,
+        }
+    }
+    fn get(&self, x: usize, y: usize) -> bool {
+        self.grid.get(x, y)
+    }
+    /// Updates a position on the grid. Joins newly connected components and flags the components
+    /// as dirty if components are (potentially) broken apart into multiple.
+    fn set(&mut self, x: usize, y: usize, blocked: bool) {
+        let p = Point::new(x as i32, y as i32);
+        if self.grid.get(x, y) != blocked && blocked {
+            self.components_dirty = true;
+        } else {
+            for p in self.get_neighbours(p) {
+                self.components.union(
+                    self.grid.get_ix(x, y),
+                    self.grid.get_ix(p.x as usize, p.y as usize),
+                );
+            }
+        }
+        for i in 0..=8 {
+            let neighbor = p.moore_neighbor(i);
+            if self.in_bounds(neighbor.x, neighbor.y) {
+                let ix = (i + 4) % 8;
+                let mut n_mask = self.neighbours.get_point(neighbor);
+                if blocked {
+                    n_mask &= !(1 << ix);
+                } else {
+                    n_mask |= 1 << ix;
+                }
+                self.neighbours.set_point(neighbor, n_mask);
+            }
+        }
+        self.grid.set(x, y, blocked);
+    }
+    fn width(&self) -> usize {
+        self.grid.width()
+    }
+    fn height(&self) -> usize {
+        self.grid.height()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
     fn test_component_generation() {
-        let mut path_graph = PathingGrid::new(3, 4);
+        let mut path_graph = PathingGrid::new(3, 4,true);
         path_graph.grid.set(1, 1, false);
         path_graph.generate_components();
         assert!(!path_graph.components.equiv(0, 4))
