@@ -2,7 +2,7 @@
 //!
 //! A grid-based pathfinding system. Implements
 //! [Jump Point Search](https://en.wikipedia.org/wiki/Jump_point_search) for speedy
-//! pathfinding. Pre-computes
+//! pathfinding. Note that this assumes a uniform-cost grid. Pre-computes
 //! [connected components](https://en.wikipedia.org/wiki/Component_(graph_theory))
 //! to avoid flood-filling behaviour if no path exists.
 mod astar_jps;
@@ -36,7 +36,7 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
 
 /// [PathingGrid] maintains information about components using a [UnionFind] structure in addition to the raw
 /// [bool] grid values in the [BoolGrid] that determine whether a space is occupied ([true]) or
-/// empty ([false]). It also records neighbours in binary ([u8]) format for fast lookups during pathfinding.
+/// empty ([false]). It also records neighbours in [u8] format for fast lookups during pathfinding.
 /// Implements [Grid] by building on [BoolGrid].
 #[derive(Clone, Debug)]
 pub struct PathingGrid {
@@ -73,6 +73,7 @@ impl PathingGrid {
     fn in_bounds(&self, x: i32, y: i32) -> bool {
         x >= 0 && y >= 0 && self.grid.index_in_bounds(x as usize, y as usize)
     }
+    /// The neighbour indexing used here corresponds to that used in [grid_util::Direction].
     fn indexed_neighbor(&self, node: &Point, index: i32) -> bool {
         (self.neighbours.get_point(*node) & 1 << (index.rem_euclid(8))) != 0
     }
