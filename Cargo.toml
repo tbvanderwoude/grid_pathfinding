@@ -7,6 +7,7 @@ description = "Pathfinding using JPS and connected components on a grid."
 keywords = ["pathfinding","grid","jump","point","JPS"]
 categories = ["game-development","simulation","algorithms"]
 license = "MIT"
+repository = "https://github.com/tbvanderwoude/grid_pathfinding"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
