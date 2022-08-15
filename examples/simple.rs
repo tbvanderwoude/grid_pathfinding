@@ -3,14 +3,14 @@ use grid_util::grid::Grid;
 use grid_util::point::Point;
 use grid_util::rect::Rect;
 
-// In this example a path is found on a 5x5 grid with shape
-// #####
-// #S  #
-// # # #
-// #  E#
-// #####
-// S marks the start
-// E marks the end
+/// In this example a path is found on a 5x5 grid with shape
+/// #####
+/// #S  #
+/// # # #
+/// #  E#
+/// #####
+/// S marks the start
+/// E marks the end
 fn main() {
     let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, true);
     pathing_grid.set_rectangle(&Rect::new(1, 1, 3, 3), false);

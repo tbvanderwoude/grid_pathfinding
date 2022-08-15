@@ -2,13 +2,14 @@ use grid_pathfinding::PathingGrid;
 use grid_util::grid::Grid;
 use grid_util::point::Point;
 
-// In this example a path is found on a 3x3 grid with shape
-// S
-//  #
-//   E
-// S marks the start
-// E marks the end
-// Note that
+/// In this example a path is found on a 3x3 grid with shape
+/// S
+///  #
+///   E
+/// where
+/// - S marks the start
+/// - E marks the end
+/// This is similar to the simple example but here the borders of the grid are implicit.
 fn main() {
     let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
     pathing_grid.set(1, 1, true);

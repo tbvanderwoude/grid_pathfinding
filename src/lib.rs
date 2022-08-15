@@ -1,7 +1,7 @@
 //! # grid_pathfinding
 //!
-//! A complete grid-based pathfinding system. Implements
-//! [Jump Point Search](https://en.wikipedia.org/wiki/Jump_point_search) for speedy optimal
+//! A grid-based pathfinding system. Implements
+//! [Jump Point Search](https://en.wikipedia.org/wiki/Jump_point_search) for speedy
 //! pathfinding. Pre-computes
 //! [connected components](https://en.wikipedia.org/wiki/Component_(graph_theory))
 //! to avoid flood-filling behaviour if no path exists.
@@ -16,9 +16,10 @@ use petgraph::unionfind::UnionFind;
 use crate::astar_jps::astar_jps;
 use core::fmt;
 
-/// [PathingGrid] maintains information about components and neighbours in addition to the raw
+/// [PathingGrid] maintains information about components using a [UnionFind] structure in addition to the raw
 /// [bool] grid values in the [BoolGrid] that determine whether a space is occupied ([true]) or
-/// empty ([false]). I
+/// empty ([false]). It also records neighbours in binary ([u8]) format for fast lookups during pathfinding.
+/// Implements [Grid] as a decorator of [BoolGrid].
 #[derive(Clone, Debug)]
 pub struct PathingGrid {
     pub grid: BoolGrid,
@@ -41,40 +42,6 @@ impl Default for PathingGrid {
     }
 }
 impl PathingGrid {
-    /// Regenerates the components if they are marked as dirty.
-    pub fn update(&mut self) {
-        if self.components_dirty {
-            info!("Components are dirty: regenerating components");
-            self.generate_components();
-        }
-    }
-    pub fn generate_components(&mut self) {
-        info!("Generating connected components");
-        let w = self.grid.width;
-        let h = self.grid.height;
-        self.components = UnionFind::new(w * h);
-        self.components_dirty = false;
-        for x in 0..w {
-            for y in 0..h {
-                if !self.grid.get(x, y) {
-                    let parent_ix = self.grid.get_ix(x, y);
-                    let point = Point::new(x as i32, y as i32);
-                    let neighbours = vec![
-                        Point::new(point.x, point.y + 1),
-                        Point::new(point.x + 1, point.y),
-                        Point::new(point.x + 1, point.y + 1),
-                    ]
-                    .into_iter()
-                    .filter(|p| self.grid.point_in_bounds(*p) && !self.grid.get_point(*p))
-                    .map(|p| self.grid.get_ix(p.x as usize, p.y as usize))
-                    .collect::<Vec<usize>>();
-                    for ix in neighbours {
-                        self.components.union(parent_ix, ix);
-                    }
-                }
-            }
-        }
-    }
     fn get_neighbours(&self, point: Point) -> Vec<Point> {
         point
             .moore_neighborhood()
@@ -97,20 +64,6 @@ impl PathingGrid {
             !self.indexed_neighbor(node, 3 + dir_num) || !self.indexed_neighbor(node, 5 + dir_num)
         } else {
             !self.indexed_neighbor(node, 2 + dir_num) || !self.indexed_neighbor(node, dir_num + 6)
-        }
-    }
-    fn unreachable(&self, start: &Point, goal: &Point) -> bool {
-        if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
-            let start_ix = self.get_ix_point(start);
-            let goal_ix = self.get_ix_point(goal);
-            if self.components.equiv(start_ix, goal_ix) {
-                false
-            } else {
-                info!("{} and {} are not equivalent components", start_ix, goal_ix);
-                true
-            }
-        } else {
-            true
         }
     }
     fn pruned_neighborhood(&self, dir: Direction, node: &Point) -> (Vec<(Point, i32)>, bool) {
@@ -185,6 +138,23 @@ impl PathingGrid {
             .map(|p| (p, 1))
             .collect::<Vec<_>>()
     }
+    fn update_neighbours(&mut self, x: i32, y: i32, blocked: bool) {
+        let p = Point::new(x, y);
+        for i in 0..8 {
+            let neighbor = p.moore_neighbor(i);
+            if self.in_bounds(neighbor.x, neighbor.y) {
+                info!("Yes");
+                let ix = (i + 4) % 8;
+                let mut n_mask = self.neighbours.get_point(neighbor);
+                if blocked {
+                    n_mask &= !(1 << ix);
+                } else {
+                    n_mask |= 1 << ix;
+                }
+                self.neighbours.set_point(neighbor, n_mask);
+            }
+        }
+    }
     fn jps_neighbours<F>(&self, parent: Option<&Point>, node: &Point, goal: &F) -> Vec<(Point, i32)>
     where
         F: Fn(&Point) -> bool,
@@ -215,9 +185,26 @@ impl PathingGrid {
             None => self.pathfinding_neighborhood(node),
         }
     }
+    /// Retrieves the component id a given [Point] belongs to.
     pub fn get_component(&self, point: &Point) -> usize {
         self.components.find(self.get_ix_point(point))
     }
+    /// Checks if start and goal are on the same component.
+    pub fn unreachable(&self, start: &Point, goal: &Point) -> bool {
+        if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
+            let start_ix = self.get_ix_point(start);
+            let goal_ix = self.get_ix_point(goal);
+            if self.components.equiv(start_ix, goal_ix) {
+                false
+            } else {
+                info!("{} and {} are not equivalent components", start_ix, goal_ix);
+                true
+            }
+        } else {
+            true
+        }
+    }
+    /// Checks if any neighbour of the goal is on the same component as the start.
     pub fn neighbours_unreachable(&self, start: &Point, goal: &Point) -> bool {
         if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
             let start_ix = self.get_ix_point(start);
@@ -228,6 +215,8 @@ impl PathingGrid {
             true
         }
     }
+    /// Computes a path from start to one of the given goals. This is done by taking the minimal
+    /// heuristic value.
     pub fn get_path_multiple_goals(
         &self,
         start: Point,
@@ -249,6 +238,9 @@ impl PathingGrid {
         );
         result.map(|(v, _c)| (*v.last().unwrap(), v))
     }
+    /// Computes a path from start to goal using JPS. If approximate is [true], then it will
+    /// path to one of the neighbours of the goal, which is useful if goal itself is
+    /// blocked.
     pub fn get_path_single_goal(
         &self,
         start: Point,
@@ -289,20 +281,38 @@ impl PathingGrid {
         }
         .map(|(v, _c)| v)
     }
-    fn update_neighbours(&mut self, x: i32, y: i32, blocked: bool) {
-        let p = Point::new(x, y);
-        for i in 0..8 {
-            let neighbor = p.moore_neighbor(i);
-            if self.in_bounds(neighbor.x, neighbor.y) {
-                info!("Yes");
-                let ix = (i + 4) % 8;
-                let mut n_mask = self.neighbours.get_point(neighbor);
-                if blocked {
-                    n_mask &= !(1 << ix);
-                } else {
-                    n_mask |= 1 << ix;
+    /// Regenerates the components if they are marked as dirty.
+    pub fn update(&mut self) {
+        if self.components_dirty {
+            info!("Components are dirty: regenerating components");
+            self.generate_components();
+        }
+    }
+    /// Generates a new [UnionFind] structure and links up grid neighbours to the same components.
+    pub fn generate_components(&mut self) {
+        info!("Generating connected components");
+        let w = self.grid.width;
+        let h = self.grid.height;
+        self.components = UnionFind::new(w * h);
+        self.components_dirty = false;
+        for x in 0..w {
+            for y in 0..h {
+                if !self.grid.get(x, y) {
+                    let parent_ix = self.grid.get_ix(x, y);
+                    let point = Point::new(x as i32, y as i32);
+                    let neighbours = vec![
+                        Point::new(point.x, point.y + 1),
+                        Point::new(point.x + 1, point.y),
+                        Point::new(point.x + 1, point.y + 1),
+                    ]
+                    .into_iter()
+                    .filter(|p| self.grid.point_in_bounds(*p) && !self.grid.get_point(*p))
+                    .map(|p| self.grid.get_ix(p.x as usize, p.y as usize))
+                    .collect::<Vec<usize>>();
+                    for ix in neighbours {
+                        self.components.union(parent_ix, ix);
+                    }
                 }
-                self.neighbours.set_point(neighbor, n_mask);
             }
         }
     }
