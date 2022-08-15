@@ -215,8 +215,9 @@ impl PathingGrid {
             true
         }
     }
-    /// Computes a path from start to one of the given goals. This is done by taking the minimal
-    /// heuristic value.
+    /// Computes a path from start to one of the given goals. This is done by taking the
+    /// [Chebyshev distance](https://en.wikipedia.org/wiki/Chebyshev_distance)
+    /// to the closest goal.
     pub fn get_path_multiple_goals(
         &self,
         start: Point,
@@ -240,7 +241,8 @@ impl PathingGrid {
     }
     /// Computes a path from start to goal using JPS. If approximate is [true], then it will
     /// path to one of the neighbours of the goal, which is useful if goal itself is
-    /// blocked.
+    /// blocked. The heuristic used is the
+    /// [Chebyshev distance](https://en.wikipedia.org/wiki/Chebyshev_distance).
     pub fn get_path_single_goal(
         &self,
         start: Point,
