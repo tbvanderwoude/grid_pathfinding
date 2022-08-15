@@ -5,5 +5,38 @@ A grid-based pathfinding system. Implements [Jump Point Search](https://en.wikip
 [connected components](https://en.wikipedia.org/wiki/Component_(graph_theory))
 to avoid flood-filling behaviour if no path exists.
 
-### Examples
-See [examples](examples/) for some examples on how to initialize the relevant datastructures and find paths.
+### Example
+Below a [simple example](examples/simple.rs) is given which illustrates how to set a basic problem and find a path.
+```rust,no_run
+use grid_pathfinding::PathingGrid;
+use grid_util::grid::Grid;
+use grid_util::point::Point;
+
+// In this example a path is found on a 3x3 grid with shape
+//  ___
+// |S  |
+// | # |
+// |  E|
+//  ___
+// where
+// - # marks an obstacle
+// - S marks the start
+// - E marks the end
+
+fn main() {
+    let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
+    pathing_grid.set(1, 1, true);
+    pathing_grid.generate_components();
+    println!("{}", pathing_grid);
+    let start = Point::new(0, 0);
+    let end = Point::new(2, 2);
+    let path = pathing_grid
+        .get_path_single_goal(start, end, false)
+        .unwrap();
+    println!("Path:");
+    for p in path {
+        println!("{:?}", p);
+    }
+}
+```
+See [examples](examples/) for finding paths with multiple goals and generating waypoints instead of full paths.

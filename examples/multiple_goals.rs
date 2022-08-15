@@ -2,16 +2,18 @@ use grid_pathfinding::PathingGrid;
 use grid_util::grid::Grid;
 use grid_util::point::Point;
 
-/// In this example a path is found to one of two goals on a 3x3 grid with shape
-///  ___
-/// |S G|
-/// | # |
-/// |  G|
-///  ___
-/// where
-/// - S marks the start
-/// - G marks a goal
-/// The found path moves to the closest goal, which is the top one.
+// In this example a path is found to one of two goals on a 3x3 grid with shape
+//  ___
+// |S G|
+// | # |
+// |  G|
+//  ___
+// where
+// - \# marks an obstacle
+// - S marks the start
+// - G marks a goal
+// The found path moves to the closest goal, which is the top one.
+
 fn main() {
     let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
     pathing_grid.set(1, 1, true);

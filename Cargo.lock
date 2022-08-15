@@ -100,9 +100,9 @@ dependencies = [
 
 [[package]]
 name = "grid_util"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5922e55149432a82d64541fb925f220a787a7848f6515cd84ea81f75eaeeac5d"
+checksum = "2b7f09fe015ff50963bc5b9810f73e54d69c8770b1986f3c8c475ba04a347662"
 dependencies = [
  "num_enum",
  "rand",

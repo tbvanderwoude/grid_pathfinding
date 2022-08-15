@@ -1,26 +1,25 @@
 use grid_pathfinding::PathingGrid;
 use grid_util::grid::Grid;
 use grid_util::point::Point;
-use grid_util::rect::Rect;
 
-/// In this example a path is found on a 5x5 grid with shape
-///  _____
-/// |#####|
-/// |#S  #|
-/// |# # #|
-/// |#  E#|
-/// |#####|
-///  _____
-/// S marks the start
-/// E marks the end
+// In this example a path is found on a 3x3 grid with shape
+//  ___
+// |S  |
+// | # |
+// |  E|
+//  ___
+// where
+// - # marks an obstacle
+// - S marks the start
+// - E marks the end
+
 fn main() {
-    let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, true);
-    pathing_grid.set_rectangle(&Rect::new(1, 1, 3, 3), false);
-    pathing_grid.set(2, 2, true);
+    let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
+    pathing_grid.set(1, 1, true);
     pathing_grid.generate_components();
     println!("{}", pathing_grid);
-    let start = Point::new(1, 1);
-    let end = Point::new(3, 3);
+    let start = Point::new(0, 0);
+    let end = Point::new(2, 2);
     let path = pathing_grid
         .get_path_single_goal(start, end, false)
         .unwrap();
