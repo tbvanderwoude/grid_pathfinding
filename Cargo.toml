@@ -11,6 +11,7 @@ petgraph = "0.5.1"
 indexmap = "^1.6"
 itertools = "^0.9"
 log = "^0.4"
+simplelog = "0.10.0"
 num-traits = "^0.2"
 grid_util = { git = "https://github.com/tbvanderwoude/grid_util", branch = "main" }
 

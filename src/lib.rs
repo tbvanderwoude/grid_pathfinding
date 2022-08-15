@@ -134,7 +134,7 @@ impl PathingGrid {
                 n_mask |= 1 << ((dir_num + 1) % 8);
                 forced = true;
             }
-            if !self.indexed_neighbor(node, dir_num + 6) {
+            if !self.indexed_neighbor(node, 6 + dir_num) {
                 n_mask |= 1 << ((dir_num + 7) % 8);
                 forced = true;
             }
@@ -260,6 +260,10 @@ impl PathingGrid {
                 info!("No neighbours of {} are reachable from {}", goal, start);
                 return None;
             }
+            info!(
+                "Neighborhood of {} is reachable from {}, computing path",
+                goal, start
+            );
             astar_jps(
                 &start,
                 |&parent, node| {
@@ -275,6 +279,7 @@ impl PathingGrid {
                 info!("{} is not reachable from {}", start, goal);
                 return None;
             }
+            info!("{} is reachable from {}, computing path", goal, start);
             astar_jps(
                 &start,
                 |&parent, node| self.jps_neighbours(parent, node, &|node_pos| *node_pos == goal),
@@ -284,12 +289,37 @@ impl PathingGrid {
         }
         .map(|(v, _c)| v)
     }
+    fn update_neighbours(&mut self, x: i32, y: i32, blocked: bool) {
+        let p = Point::new(x, y);
+        for i in 0..8 {
+            let neighbor = p.moore_neighbor(i);
+            if self.in_bounds(neighbor.x, neighbor.y) {
+                info!("Yes");
+                let ix = (i + 4) % 8;
+                let mut n_mask = self.neighbours.get_point(neighbor);
+                if blocked {
+                    n_mask &= !(1 << ix);
+                } else {
+                    n_mask |= 1 << ix;
+                }
+                self.neighbours.set_point(neighbor, n_mask);
+            }
+        }
+    }
 }
 impl fmt::Display for PathingGrid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "Grid:");
         for y in 0..self.grid.height {
             let values = (0..self.grid.width)
                 .map(|x| self.grid.get(x, y) as i32)
+                .collect::<Vec<i32>>();
+            writeln!(f, "{:?}", values)?;
+        }
+        writeln!(f, "\nNeighbours:");
+        for y in 0..self.neighbours.height {
+            let values = (0..self.neighbours.width)
+                .map(|x| self.neighbours.get(x, y) as i32)
                 .collect::<Vec<i32>>();
             writeln!(f, "{:?}", values)?;
         }
@@ -299,12 +329,23 @@ impl fmt::Display for PathingGrid {
 
 impl Grid<bool> for PathingGrid {
     fn new(width: usize, height: usize, default_value: bool) -> Self {
-        PathingGrid {
+        let mut base_grid = PathingGrid {
             grid: BoolGrid::new(width, height, default_value),
-            neighbours: SimpleGrid::new(width, height, 0),
+            neighbours: SimpleGrid::new(width, height, 255),
             components: UnionFind::new(width * height),
             components_dirty: false,
+        };
+        // Emulates 'placing' of blocked tile around map border to correctly initialize neighbours
+        // and make behaviour of a map bordered by tiles the same as a borderless map.
+        for i in -1..=(width as i32) {
+            base_grid.update_neighbours(i, -1, true);
+            base_grid.update_neighbours(i, height as i32, true);
         }
+        for j in -1..=(height as i32) {
+            base_grid.update_neighbours(-1, j, true);
+            base_grid.update_neighbours(width as i32, j, true);
+        }
+        base_grid
     }
     fn get(&self, x: usize, y: usize) -> bool {
         self.grid.get(x, y)
@@ -323,19 +364,7 @@ impl Grid<bool> for PathingGrid {
                 );
             }
         }
-        for i in 0..=8 {
-            let neighbor = p.moore_neighbor(i);
-            if self.in_bounds(neighbor.x, neighbor.y) {
-                let ix = (i + 4) % 8;
-                let mut n_mask = self.neighbours.get_point(neighbor);
-                if blocked {
-                    n_mask &= !(1 << ix);
-                } else {
-                    n_mask |= 1 << ix;
-                }
-                self.neighbours.set_point(neighbor, n_mask);
-            }
-        }
+        self.update_neighbours(p.x, p.y, blocked);
         self.grid.set(x, y, blocked);
     }
     fn width(&self) -> usize {
@@ -351,7 +380,7 @@ mod tests {
     use super::*;
     #[test]
     fn test_component_generation() {
-        let mut path_graph = PathingGrid::new(3, 4,true);
+        let mut path_graph = PathingGrid::new(3, 4, true);
         path_graph.grid.set(1, 1, false);
         path_graph.generate_components();
         assert!(!path_graph.components.equiv(0, 4))
