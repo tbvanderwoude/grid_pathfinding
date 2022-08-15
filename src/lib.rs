@@ -1,7 +1,9 @@
 //! # grid_pathfinding
 //!
 //! A grid-based pathfinding system. Implements
-//! [Jump Point Search](https://en.wikipedia.org/wiki/Jump_point_search) for speedy
+//! [Jump Point Search](https://en.wikipedia.org/wiki/Jump_point_search) with
+//! [improved pruning rules](https://www.researchgate.net/publication/287338108_Improving_jump_point_search)
+//! for speedy
 //! pathfinding. Note that this assumes a uniform-cost grid. Pre-computes
 //! [connected components](https://en.wikipedia.org/wiki/Component_(graph_theory))
 //! to avoid flood-filling behaviour if no path exists.
@@ -18,7 +20,7 @@ use core::fmt;
 use std::collections::VecDeque;
 
 /// Turns waypoints into a path on the grid which can be followed step by step. Due to symmetry this
-/// is typically just one of many ways to follow the waypoints.
+/// is typically one of many ways to follow the waypoints.
 pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
     let mut waypoint_queue = waypoints.into_iter().collect::<VecDeque<Point>>();
     let mut path: Vec<Point> = Vec::new();
@@ -36,7 +38,7 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
 
 /// [PathingGrid] maintains information about components using a [UnionFind] structure in addition to the raw
 /// [bool] grid values in the [BoolGrid] that determine whether a space is occupied ([true]) or
-/// empty ([false]). It also records neighbours in [u8] format for fast lookups during pathfinding.
+/// empty ([false]). It also records neighbours in [u8] format for fast lookups during search.
 /// Implements [Grid] by building on [BoolGrid].
 #[derive(Clone, Debug)]
 pub struct PathingGrid {
