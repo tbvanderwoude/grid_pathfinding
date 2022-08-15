@@ -19,7 +19,7 @@ fn main() {
     println!("{}", pathing_grid);
     let start = Point::new(1, 1);
     let end = Point::new(3, 3);
-    if let Some(path) = pathing_grid.get_path_single_goal(start, end, false) {
+    if let Some(path) = pathing_grid.get_waypoints_single_goal(start, end, false) {
         println!("A path has been found:");
         for p in path {
             println!("{:?}", p);

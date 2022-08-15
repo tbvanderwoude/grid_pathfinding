@@ -43,19 +43,19 @@ impl Default for PathingGrid {
     }
 }
 /// Turns a compact path into a concrete path on the grid which can be followed step by step.
-pub fn expand_path(path: Vec<Point>) -> Vec<Point> {
-    let mut path_queue = path.into_iter().collect::<VecDeque<Point>>();
-    let mut expanded_path: Vec<Point> = Vec::new();
-    let mut current = path_queue.pop_front().unwrap();
-    expanded_path.push(current);
-    for next in path_queue {
+pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
+    let mut waypoint_queue = waypoints.into_iter().collect::<VecDeque<Point>>();
+    let mut path: Vec<Point> = Vec::new();
+    let mut current = waypoint_queue.pop_front().unwrap();
+    path.push(current);
+    for next in waypoint_queue {
         while current.move_distance(&next) >= 1 {
             let delta = current.dir(&next);
             current = current + delta;
-            expanded_path.push(current);
+            path.push(current);
         }
     }
-    expanded_path
+    path
 }
 impl PathingGrid {
     fn get_neighbours(&self, point: Point) -> Vec<Point> {
@@ -239,6 +239,29 @@ impl PathingGrid {
         start: Point,
         goals: Vec<&Point>,
     ) -> Option<(Point, Vec<Point>)> {
+        self.get_waypoints_multiple_goals(start, goals)
+            .map(|(x, y)| (x, waypoints_to_path(y)))
+    }
+    /// Computes a path from start to goal using JPS. If approximate is [true], then it will
+    /// path to one of the neighbours of the goal, which is useful if goal itself is
+    /// blocked. The heuristic used is the
+    /// [Chebyshev distance](https://en.wikipedia.org/wiki/Chebyshev_distance).
+    pub fn get_path_single_goal(
+        &self,
+        start: Point,
+        goal: Point,
+        approximate: bool,
+    ) -> Option<Vec<Point>> {
+        self.get_waypoints_single_goal(start, goal, approximate)
+            .map(|x| waypoints_to_path(x))
+    }
+
+    /// The raw waypoints (jump points) from which [Self::get_path_multiple_goals] makes a path.
+    pub fn get_waypoints_multiple_goals(
+        &self,
+        start: Point,
+        goals: Vec<&Point>,
+    ) -> Option<(Point, Vec<Point>)> {
         if goals.is_empty() {
             return None;
         }
@@ -255,11 +278,8 @@ impl PathingGrid {
         );
         result.map(|(v, _c)| (*v.last().unwrap(), v))
     }
-    /// Computes a path from start to goal using JPS. If approximate is [true], then it will
-    /// path to one of the neighbours of the goal, which is useful if goal itself is
-    /// blocked. The heuristic used is the
-    /// [Chebyshev distance](https://en.wikipedia.org/wiki/Chebyshev_distance).
-    pub fn get_path_single_goal(
+    /// The raw waypoints (jump points) from which [Self::get_path_single_goal] makes a path.
+    pub fn get_waypoints_single_goal(
         &self,
         start: Point,
         goal: Point,
