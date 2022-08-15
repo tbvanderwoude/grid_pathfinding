@@ -37,7 +37,7 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
 /// [PathingGrid] maintains information about components using a [UnionFind] structure in addition to the raw
 /// [bool] grid values in the [BoolGrid] that determine whether a space is occupied ([true]) or
 /// empty ([false]). It also records neighbours in binary ([u8]) format for fast lookups during pathfinding.
-/// Implements [Grid] as a decorator of [BoolGrid].
+/// Implements [Grid] by building on [BoolGrid].
 #[derive(Clone, Debug)]
 pub struct PathingGrid {
     pub grid: BoolGrid,
@@ -280,7 +280,7 @@ impl PathingGrid {
         );
         result.map(|(v, _c)| (*v.last().unwrap(), v))
     }
-    /// The raw waypoints (jump points) from which [get_path_single_goal](Self::get_path_single_goal)makes a path.
+    /// The raw waypoints (jump points) from which [get_path_single_goal](Self::get_path_single_goal) makes a path.
     pub fn get_waypoints_single_goal(
         &self,
         start: Point,
