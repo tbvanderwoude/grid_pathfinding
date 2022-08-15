@@ -83,19 +83,6 @@ impl PathingGrid {
             }
         }
     }
-    pub fn get_component(&self, point: &Point) -> usize {
-        self.components.find(self.get_ix(point))
-    }
-    pub fn get_neighbours(&self, point: Point) -> Vec<Point> {
-        point
-            .moore_neighborhood()
-            .into_iter()
-            .filter(|p| self.can_move_to(*p))
-            .collect::<Vec<Point>>()
-    }
-    pub fn get_ix(&self, point: &Point) -> usize {
-        self.grid.get_ix(point.x as usize, point.y as usize)
-    }
     /// Updates a position on the grid. Joins newly connected components and flags the components
     /// as dirty if components are (potentially) broken apart into multiple.
     pub fn set(&mut self, x: usize, y: usize, blocked: bool) {
@@ -125,13 +112,26 @@ impl PathingGrid {
         }
         self.grid.set(x, y, blocked);
     }
-    pub fn can_move_to(&self, pos: Point) -> bool {
+    fn get_component(&self, point: &Point) -> usize {
+        self.components.find(self.get_ix(point))
+    }
+    fn get_neighbours(&self, point: Point) -> Vec<Point> {
+        point
+            .moore_neighborhood()
+            .into_iter()
+            .filter(|p| self.can_move_to(*p))
+            .collect::<Vec<Point>>()
+    }
+    fn get_ix(&self, point: &Point) -> usize {
+        self.grid.get_ix(point.x as usize, point.y as usize)
+    }
+    fn can_move_to(&self, pos: Point) -> bool {
         self.in_bounds(pos.x, pos.y) && !self.grid.get(pos.x as usize, pos.y as usize)
     }
-    pub fn in_bounds(&self, x: i32, y: i32) -> bool {
+    fn in_bounds(&self, x: i32, y: i32) -> bool {
         x >= 0 && y >= 0 && self.grid.index_in_bounds(x as usize, y as usize)
     }
-    pub fn indexed_neighbor(&self, node: &Point, index: i32) -> bool {
+    fn indexed_neighbor(&self, node: &Point, index: i32) -> bool {
         (self.neighbours.get_point(*node) & 1 << (index.rem_euclid(8))) != 0
     }
     fn is_forced(&self, dir: Direction, node: &Point) -> bool {
@@ -207,7 +207,7 @@ impl PathingGrid {
         }
         self.jump(&new_n, cost + 1, direction, goal)
     }
-    pub fn neighbours_unreachable(&self, start: &Point, goal: &Point) -> bool {
+    fn neighbours_unreachable(&self, start: &Point, goal: &Point) -> bool {
         if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
             let start_ix = self.get_ix(start);
             !goal.moore_neighborhood().iter().any(|p| {
@@ -217,7 +217,7 @@ impl PathingGrid {
             true
         }
     }
-    pub fn unreachable(&self, start: &Point, goal: &Point) -> bool {
+    fn unreachable(&self, start: &Point, goal: &Point) -> bool {
         if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
             let start_ix = self.get_ix(start);
             let goal_ix = self.get_ix(goal);
@@ -231,14 +231,14 @@ impl PathingGrid {
             true
         }
     }
-    pub fn pathfinding_neighborhood(&self, pos: &Point) -> Vec<(Point, i32)> {
+    fn pathfinding_neighborhood(&self, pos: &Point) -> Vec<(Point, i32)> {
         pos.moore_neighborhood()
             .into_iter()
             .filter(|&position| self.can_move_to(position))
             .map(|p| (p, 1))
             .collect::<Vec<_>>()
     }
-    pub fn jps_neighbours<F>(
+    fn jps_neighbours<F>(
         &self,
         parent: Option<&Point>,
         node: &Point,
