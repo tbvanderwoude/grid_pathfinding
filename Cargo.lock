@@ -101,7 +101,8 @@ dependencies = [
 [[package]]
 name = "grid_util"
 version = "0.1.0"
-source = "git+https://github.com/tbvanderwoude/grid_util?branch=main#217836b4dce74788ebc6e7ddaca18983cab1076a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5922e55149432a82d64541fb925f220a787a7848f6515cd84ea81f75eaeeac5d"
 dependencies = [
  "num_enum",
  "rand",

@@ -3,7 +3,7 @@ name = "grid_pathfinding"
 version = "0.1.0"
 authors = ["Thom van der Woude <tbvanderwoude@protonmail.com>"]
 edition = "2021"
-description = "Pathfinding using JPS and connected components on a grid"
+description = "Pathfinding using JPS and connected components on a grid."
 keywords = ["pathfinding","grid","jump","point","JPS"]
 categories = ["game-development","simulation","algorithms"]
 license = "MIT"
@@ -16,5 +16,5 @@ itertools = "^0.9"
 log = "^0.4"
 simplelog = "0.10.0"
 num-traits = "^0.2"
-grid_util = { git = "https://github.com/tbvanderwoude/grid_util", branch = "main" }
+grid_util = "0.1.0"
 

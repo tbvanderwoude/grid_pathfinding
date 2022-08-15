@@ -4,11 +4,13 @@ use grid_util::point::Point;
 use grid_util::rect::Rect;
 
 /// In this example a path is found on a 5x5 grid with shape
-/// #####
-/// #S  #
-/// # # #
-/// #  E#
-/// #####
+///  _____
+/// |#####|
+/// |#S  #|
+/// |# # #|
+/// |#  E#|
+/// |#####|
+///  _____
 /// S marks the start
 /// E marks the end
 fn main() {

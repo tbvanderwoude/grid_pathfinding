@@ -3,9 +3,11 @@ use grid_util::grid::Grid;
 use grid_util::point::Point;
 
 /// In this example a path is found on a 3x3 grid with shape
-/// S
-///  #
-///   E
+///  ___
+/// |S  |
+/// | # |
+/// |  E|
+///  ___
 /// where
 /// - S marks the start
 /// - E marks the end
