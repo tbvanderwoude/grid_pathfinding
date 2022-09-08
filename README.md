@@ -40,3 +40,7 @@ fn main() {
 }
 ```
 See [examples](examples/) for finding paths with multiple goals and generating waypoints instead of full paths.
+
+### Goal of crate
+The long-term goal of this crate is to provide a fast pathfinding implementation for grids as well as support
+for features like multi-tile pathfinding and [multi-agent pathfinding](https://en.wikipedia.org/wiki/Multi-agent_pathfinding).
