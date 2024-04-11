@@ -1,6 +1,6 @@
 [package]
 name = "grid_pathfinding"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Thom van der Woude <tbvanderwoude@protonmail.com>"]
 edition = "2021"
 description = "Pathfinding using JPS and connected components on a grid."

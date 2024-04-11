@@ -57,7 +57,7 @@ dependencies = [
 
 [[package]]
 name = "grid_pathfinding"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "grid_util",
  "indexmap",
