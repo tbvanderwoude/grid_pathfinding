@@ -12,10 +12,10 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-petgraph = "0.5.1"
-indexmap = "^1.6"
-itertools = "^0.9"
-log = "^0.4"
-num-traits = "^0.2"
+petgraph = "0.6.4"
+indexmap = "2.2"
+itertools = "0.12"
+log = "0.4"
+num-traits = "0.2"
 grid_util = "0.1.1"
 
