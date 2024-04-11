@@ -12,7 +12,6 @@ mod astar_jps;
 use grid_util::direction::Direction;
 use grid_util::grid::{BoolGrid, Grid, SimpleGrid};
 use grid_util::point::Point;
-use log::info;
 use petgraph::unionfind::UnionFind;
 
 use crate::astar_jps::astar_jps;

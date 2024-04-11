@@ -15,7 +15,6 @@ readme = "README.md"
 petgraph = "0.6.4"
 indexmap = "2.2"
 itertools = "0.12"
-log = "0.4"
 num-traits = "0.2"
 grid_util = "0.1.1"
 
