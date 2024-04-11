@@ -164,7 +164,6 @@ impl PathingGrid {
         for i in 0..8 {
             let neighbor = p.moore_neighbor(i);
             if self.in_bounds(neighbor.x, neighbor.y) {
-                info!("Yes");
                 let ix = (i + 4) % 8;
                 let mut n_mask = self.neighbours.get_point(neighbor);
                 if blocked {
@@ -218,7 +217,7 @@ impl PathingGrid {
             if self.components.equiv(start_ix, goal_ix) {
                 false
             } else {
-                info!("{} and {} are not equivalent components", start_ix, goal_ix);
+                // start_ix and goal_ix are not equivalent components
                 true
             }
         } else {
@@ -292,13 +291,10 @@ impl PathingGrid {
     ) -> Option<Vec<Point>> {
         if approximate {
             if self.neighbours_unreachable(&start, &goal) {
-                info!("No neighbours of {} are reachable from {}", goal, start);
+                // No neigbhours of the goal are reachable from the start
                 return None;
             }
-            info!(
-                "Neighborhood of {} is reachable from {}, computing path",
-                goal, start
-            );
+            // A neighbour of the goal can be reached, compute a path
             astar_jps(
                 &start,
                 |&parent, node| {
@@ -311,10 +307,10 @@ impl PathingGrid {
             )
         } else {
             if self.unreachable(&start, &goal) {
-                info!("{} is not reachable from {}", start, goal);
+                // The goal is unreachable from the start
                 return None;
             }
-            info!("{} is reachable from {}, computing path", goal, start);
+            // The goal is reachable from the start, compute a path
             astar_jps(
                 &start,
                 |&parent, node| self.jps_neighbours(parent, node, &|node_pos| *node_pos == goal),
@@ -327,13 +323,12 @@ impl PathingGrid {
     /// Regenerates the components if they are marked as dirty.
     pub fn update(&mut self) {
         if self.components_dirty {
-            info!("Components are dirty: regenerating components");
+            // The components are dirty, regenerate them
             self.generate_components();
         }
     }
     /// Generates a new [UnionFind] structure and links up grid neighbours to the same components.
     pub fn generate_components(&mut self) {
-        info!("Generating connected components");
         let w = self.grid.width;
         let h = self.grid.height;
         self.components = UnionFind::new(w * h);
