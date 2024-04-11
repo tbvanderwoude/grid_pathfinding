@@ -45,10 +45,10 @@ pub struct PathingGrid {
     pub neighbours: SimpleGrid<u8>,
     pub components: UnionFind<usize>,
     pub components_dirty: bool,
+    pub heuristic_factor: f32,
 }
 
 const IMPROVED_PRUNING: bool = true;
-const HEURISTIC_FACTOR: f32 = 1.2;
 
 impl Default for PathingGrid {
     fn default() -> PathingGrid {
@@ -57,6 +57,7 @@ impl Default for PathingGrid {
             neighbours: SimpleGrid::default(),
             components: UnionFind::new(0),
             components_dirty: false,
+            heuristic_factor: 1.0,
         }
     }
 }
@@ -275,7 +276,7 @@ impl PathingGrid {
             },
             |&point| {
                 (goals.iter().map(|x| point.move_distance(*x)).min().unwrap() as f32
-                    * HEURISTIC_FACTOR) as i32
+                    * self.heuristic_factor) as i32
             },
             |node_pos| goals.contains(&node_pos),
         );
@@ -301,7 +302,7 @@ impl PathingGrid {
                         node_pos.move_distance(&goal) <= 1
                     })
                 },
-                |&point| (point.move_distance(&goal) as f32 * HEURISTIC_FACTOR) as i32,
+                |&point| (point.move_distance(&goal) as f32 * self.heuristic_factor) as i32,
                 |node_pos| node_pos.move_distance(&goal) <= 1,
             )
         } else {
@@ -313,7 +314,7 @@ impl PathingGrid {
             astar_jps(
                 &start,
                 |&parent, node| self.jps_neighbours(parent, node, &|node_pos| *node_pos == goal),
-                |&point| (point.move_distance(&goal) as f32 * HEURISTIC_FACTOR) as i32,
+                |&point| (point.move_distance(&goal) as f32 * self.heuristic_factor) as i32,
                 |node_pos| *node_pos == goal,
             )
         }
@@ -381,6 +382,7 @@ impl Grid<bool> for PathingGrid {
             neighbours: SimpleGrid::new(width, height, 255),
             components: UnionFind::new(width * height),
             components_dirty: false,
+            heuristic_factor: 1.0,
         };
         // Emulates 'placing' of blocked tile around map border to correctly initialize neighbours
         // and make behaviour of a map bordered by tiles the same as a borderless map.
