@@ -487,4 +487,18 @@ mod tests {
         // The shortest path takes 4 steps
         assert!(path.len() == 4);
     }
+
+    #[test]
+    fn test_multiple_goals() {
+        let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
+        pathing_grid.set(1, 1, true);
+        pathing_grid.generate_components();
+        println!("{}", pathing_grid);
+        let start = Point::new(0, 0);
+        let goal_1 = Point::new(4, 4);
+        let goal_2 = Point::new(2, 2);
+        let goals = vec![&goal_1, &goal_2];
+        let (selected_goal, _) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
+        assert_eq!(selected_goal, Point::new(2,2));
+    }
 }
