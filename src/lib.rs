@@ -48,7 +48,7 @@ pub struct PathingGrid {
     pub heuristic_factor: f32,
 }
 
-const IMPROVED_PRUNING: bool = true;
+const IMPROVED_PRUNING: bool = false;
 
 impl Default for PathingGrid {
     fn default() -> PathingGrid {
