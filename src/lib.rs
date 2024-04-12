@@ -87,7 +87,7 @@ impl PathingGrid {
             !self.indexed_neighbor(node, 2 + dir_num) || !self.indexed_neighbor(node, dir_num + 6)
         }
     }
-    fn pruned_neighborhood(&self, dir: Direction, node: &Point) -> (Vec<(Point, i32)>, bool) {
+    fn pruned_neighborhood<'a>(&self, dir: Direction, node: &'a Point) -> (impl Iterator<Item = (Point, i32)> + 'a, bool) {
         let dir_num = dir.num();
         let mut n_mask: u8;
         let neighbours = self.neighbours.get_point(*node);
@@ -116,9 +116,9 @@ impl PathingGrid {
         let comb_mask = neighbours & n_mask;
         (
             (0..8)
-                .filter(|x| comb_mask & (1 << *x) != 0)
+                .filter(move |x| comb_mask & (1 << *x) != 0)
                 .map(|d| (node.moore_neighbor(d), 1))
-                .collect::<Vec<(Point, i32)>>(),
+                ,
             forced,
         )
     }
@@ -183,9 +183,9 @@ impl PathingGrid {
             Some(parent_node) => {
                 let mut succ = vec![];
                 let dir = parent_node.dir_obj(node);
-                for (n, c) in &self.pruned_neighborhood(dir, &node).0 {
+                for (n, c) in self.pruned_neighborhood(dir, &node).0 {
                     let dir = node.dir_obj(&n);
-                    if let Some((jumped_node, cost)) = self.jump(node, *c, dir, goal) {
+                    if let Some((jumped_node, cost)) = self.jump(node, c, dir, goal) {
                         let neighbour_dir = node.dir_obj(&jumped_node);
                         if IMPROVED_PRUNING
                             && dir.diagonal()
@@ -427,11 +427,45 @@ impl Grid<bool> for PathingGrid {
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// Tests whether points are correctly mapped to different connected components
     #[test]
     fn test_component_generation() {
-        let mut path_graph = PathingGrid::new(3, 4, true);
-        path_graph.grid.set(1, 1, false);
+        // Corresponds to 3x3 grid
+        //  ___
+        // | # |
+        // | # |
+        // | # |
+        //  ___
+        let mut path_graph = PathingGrid::new(3, 3, false);
+        path_graph.grid.set(1, 0, true);
+        path_graph.grid.set(1, 1, true);
+        path_graph.grid.set(1, 2, true);
+        let f_ix = |p| path_graph.get_ix_point(p);
+        let p1 = Point::new(0,0);
+        let p2 = Point::new(1,1);
+        let p3 = Point::new(0,2);
+        let p4 = Point::new(2,0);
+        let p1_ix = f_ix(&p1);
+        let p2_ix = f_ix(&p2);
+        let p3_ix = f_ix(&p3);
+        let p4_ix = f_ix(&p4);
         path_graph.generate_components();
-        assert!(!path_graph.components.equiv(0, 4))
+        assert!(!path_graph.components.equiv(p1_ix, p2_ix));
+        assert!(path_graph.components.equiv(p1_ix, p3_ix));
+        assert!(!path_graph.components.equiv(p1_ix, p4_ix));
+    }
+    /// Corresponds to the simple example, asserts that the optimal 4 step solution is found.
+    #[test]
+    fn solve_simple_problem() {
+        let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
+        pathing_grid.set(1, 1, true);
+        pathing_grid.generate_components();
+        let start = Point::new(0, 0);
+        let end = Point::new(2, 2);
+        let path = pathing_grid
+            .get_path_single_goal(start, end, false)
+            .unwrap();
+        // The shortest path takes 4 steps
+        assert!(path.len()==4);
     }
 }
