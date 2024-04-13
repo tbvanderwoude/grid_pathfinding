@@ -197,9 +197,9 @@ impl PathingGrid {
                         {
                             let jump_points =
                                 self.jps_neighbours(Some(parent_node), &jumped_node, goal);
-                            // Extend the successors with the neighbours of the unforced node, correcting the 
+                            // Extend the successors with the neighbours of the unforced node, correcting the
                             // cost to include the cost from parent_node to jumped_node
-                            succ.extend(jump_points.into_iter().map(|(p,c)| (p,c+cost)));
+                            succ.extend(jump_points.into_iter().map(|(p, c)| (p, c + cost)));
                         }
                         // TODO: check if there should be an else here?
                         {
@@ -352,7 +352,7 @@ impl PathingGrid {
                     ]
                     .into_iter()
                     .filter(|p| self.grid.point_in_bounds(*p) && !self.grid.get_point(*p))
-                    .for_each(|p|{
+                    .for_each(|p| {
                         let ix = self.grid.get_ix(p.x as usize, p.y as usize);
                         self.components.union(parent_ix, ix);
                     });
@@ -502,6 +502,6 @@ mod tests {
         let goal_2 = Point::new(2, 2);
         let goals = vec![&goal_1, &goal_2];
         let (selected_goal, _) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
-        assert_eq!(selected_goal, Point::new(2,2));
+        assert_eq!(selected_goal, Point::new(2, 2));
     }
 }
