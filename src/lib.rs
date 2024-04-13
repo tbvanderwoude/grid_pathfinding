@@ -345,18 +345,17 @@ impl PathingGrid {
                 if !self.grid.get(x, y) {
                     let parent_ix = self.grid.get_ix(x, y);
                     let point = Point::new(x as i32, y as i32);
-                    let neighbours = vec![
+                    vec![
                         Point::new(point.x, point.y + 1),
                         Point::new(point.x + 1, point.y),
                         Point::new(point.x + 1, point.y + 1),
                     ]
                     .into_iter()
                     .filter(|p| self.grid.point_in_bounds(*p) && !self.grid.get_point(*p))
-                    .map(|p| self.grid.get_ix(p.x as usize, p.y as usize))
-                    .collect::<Vec<usize>>();
-                    for ix in neighbours {
+                    .for_each(|p|{
+                        let ix = self.grid.get_ix(p.x as usize, p.y as usize);
                         self.components.union(parent_ix, ix);
-                    }
+                    });
                 }
             }
         }
@@ -466,7 +465,7 @@ mod tests {
         path_graph.grid.set(1, 0, true);
         path_graph.grid.set(1, 1, true);
         let p1 = Point::new(0, 0);
-        let p2 = Point::new(1, 1);
+        let p2 = Point::new(1, 0);
         let p3 = Point::new(0, 1);
         let p4 = Point::new(2, 0);
         path_graph.generate_components();
