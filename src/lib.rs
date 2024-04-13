@@ -120,10 +120,10 @@ impl PathingGrid {
             }
         }
         let comb_mask = neighbours & n_mask;
-        let diagonal = self.allow_diagonal_move;
         (
             (0..8)
-                .filter(move |x| comb_mask & (1 << *x) != 0 && (diagonal || x%2==0))
+                .step_by(if self.allow_diagonal_move { 1 } else { 2 })
+                .filter(move |x| comb_mask & (1 << *x) != 0)
                 .map(|d| (node.moore_neighbor(d), 1)),
             forced,
         )
@@ -200,9 +200,9 @@ impl PathingGrid {
                         {
                             let jump_points =
                                 self.jps_neighbours(Some(parent_node), &jumped_node, goal);
-                            // Extend the successors with the neighbours of the unforced node, correcting the 
+                            // Extend the successors with the neighbours of the unforced node, correcting the
                             // cost to include the cost from parent_node to jumped_node
-                            succ.extend(jump_points.into_iter().map(|(p,c)| (p,c+cost)));
+                            succ.extend(jump_points.into_iter().map(|(p, c)| (p, c + cost)));
                         }
                         // TODO: check if there should be an else here?
                         {
@@ -506,6 +506,6 @@ mod tests {
         let goal_2 = Point::new(2, 2);
         let goals = vec![&goal_1, &goal_2];
         let (selected_goal, _) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
-        assert_eq!(selected_goal, Point::new(2,2));
+        assert_eq!(selected_goal, Point::new(2, 2));
     }
 }
