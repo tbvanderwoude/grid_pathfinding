@@ -46,6 +46,7 @@ pub struct PathingGrid {
     pub components: UnionFind<usize>,
     pub components_dirty: bool,
     pub heuristic_factor: f32,
+    pub allow_diagonal_move: bool,
 }
 
 const IMPROVED_PRUNING: bool = true;
@@ -58,6 +59,7 @@ impl Default for PathingGrid {
             components: UnionFind::new(0),
             components_dirty: false,
             heuristic_factor: 1.0,
+            allow_diagonal_move: true,
         }
     }
 }
@@ -120,6 +122,7 @@ impl PathingGrid {
         let comb_mask = neighbours & n_mask;
         (
             (0..8)
+                .step_by(if self.allow_diagonal_move { 1 } else { 2 })
                 .filter(move |x| comb_mask & (1 << *x) != 0)
                 .map(|d| (node.moore_neighbor(d), 1)),
             forced,
@@ -389,6 +392,7 @@ impl Grid<bool> for PathingGrid {
             components: UnionFind::new(width * height),
             components_dirty: false,
             heuristic_factor: 1.0,
+            allow_diagonal_move: true,
         };
         // Emulates 'placing' of blocked tile around map border to correctly initialize neighbours
         // and make behaviour of a map bordered by tiles the same as a borderless map.
@@ -496,7 +500,6 @@ mod tests {
         let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
         pathing_grid.set(1, 1, true);
         pathing_grid.generate_components();
-        println!("{}", pathing_grid);
         let start = Point::new(0, 0);
         let goal_1 = Point::new(4, 4);
         let goal_2 = Point::new(2, 2);
