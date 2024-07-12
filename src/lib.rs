@@ -369,11 +369,19 @@ impl PathingGrid {
                 if !self.grid.get(x, y) {
                     let parent_ix = self.grid.get_ix(x, y);
                     let point = Point::new(x as i32, y as i32);
-                    let neighbours = vec![
-                        Point::new(point.x, point.y + 1),
-                        Point::new(point.x + 1, point.y),
-                        Point::new(point.x + 1, point.y + 1),
-                    ]
+
+                    let neighbours = if self.allow_diagonal_move {
+                        vec![
+                            Point::new(point.x, point.y + 1),
+                            Point::new(point.x + 1, point.y),
+                            Point::new(point.x + 1, point.y + 1),
+                        ]
+                    } else {
+                        vec![
+                            Point::new(point.x, point.y + 1),
+                            Point::new(point.x + 1, point.y),
+                        ]
+                    }
                     .into_iter()
                     .filter(|p| self.grid.point_in_bounds(*p) && !self.grid.get_point(*p))
                     .map(|p| self.grid.get_ix(p.x as usize, p.y as usize))
@@ -503,7 +511,23 @@ mod tests {
         assert!(path_graph.neighbours_unreachable(&p1, &p4));
     }
 
-    /// Corresponds to the simple example, asserts that the optimal 4 step solution is found.
+    /// Asserts that the optimal 4 step solution is found. Uses improved pruning and allows diagonals.
+    #[test]
+    fn reachable_without_diagonals() {
+        // |S  |
+        // | # |
+        // |  G|
+        //  ___
+        let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
+        pathing_grid.improved_pruning = false;
+        pathing_grid.allow_diagonal_move = false;
+        pathing_grid.set(1, 1, true);
+        pathing_grid.generate_components();
+        let start = Point::new(0, 0);
+        let end = Point::new(2, 2);
+        assert!(!pathing_grid.unreachable(&start, &end));
+    }
+
     #[test]
     fn solve_simple_problem() {
         let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
@@ -566,7 +590,28 @@ mod tests {
     }
 
     #[test]
-    fn test_diagonal_switch() {
+    fn test_diagonal_switch_reachable() {
+        // Tests the effect of allowing diagonals in solving the following 2x2 grid:
+        //  ___
+        // | #|
+        // |# |
+        //  __
+        let mut pathing_grid: PathingGrid = PathingGrid::new(2, 2, true);
+        pathing_grid.allow_diagonal_move = false;
+        let mut pathing_grid_diag: PathingGrid = PathingGrid::new(2, 2, true);
+        for pathing_grid in [&mut pathing_grid, &mut pathing_grid_diag] {
+            pathing_grid.set(0, 0, false);
+            pathing_grid.set(1, 1, false);
+            pathing_grid.generate_components();
+        }
+        let start = Point::new(0, 0);
+        let end = Point::new(1, 1);
+        assert!(pathing_grid.unreachable(&start, &end));
+        assert!(!pathing_grid_diag.unreachable(&start, &end));
+    }
+
+    #[test]
+    fn test_diagonal_switch_path() {
         // Tests the effect of allowing diagonals in solving the following 2x2 grid:
         //  ___
         // | #|
