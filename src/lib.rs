@@ -233,6 +233,11 @@ impl PathingGrid {
         self.components.find(self.get_ix_point(point))
     }
     /// Checks if start and goal are on the same component.
+    pub fn reachable(&self, start: &Point, goal: &Point) -> bool {
+        !self.unreachable(start, goal)
+    }
+
+    /// Checks if start and goal are on the same component.
     pub fn unreachable(&self, start: &Point, goal: &Point) -> bool {
         if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
             let start_ix = self.get_ix_point(start);
@@ -525,7 +530,7 @@ mod tests {
         pathing_grid.generate_components();
         let start = Point::new(0, 0);
         let end = Point::new(2, 2);
-        assert!(!pathing_grid.unreachable(&start, &end));
+        assert!(pathing_grid.reachable(&start, &end));
     }
 
     #[test]
@@ -607,7 +612,7 @@ mod tests {
         let start = Point::new(0, 0);
         let end = Point::new(1, 1);
         assert!(pathing_grid.unreachable(&start, &end));
-        assert!(!pathing_grid_diag.unreachable(&start, &end));
+        assert!(pathing_grid_diag.reachable(&start, &end));
     }
 
     #[test]
