@@ -46,7 +46,7 @@ pub struct PathingGrid {
     pub components: UnionFind<usize>,
     pub components_dirty: bool,
     pub heuristic_factor: f32,
-    pub improved_pruning: bool, 
+    pub improved_pruning: bool,
     pub allow_diagonal_move: bool,
 }
 
@@ -70,9 +70,17 @@ impl PathingGrid {
         } else {
             point.neumann_neighborhood()
         }
-            .into_iter()
-            .filter(|p| self.can_move_to(*p))
-            .collect::<Vec<Point>>()
+        .into_iter()
+        .filter(|p| self.can_move_to(*p))
+        .collect::<Vec<Point>>()
+    }
+    fn point_heuristic(&self, p1: &Point, p2: &Point) ->  i32{
+        if self.allow_diagonal_move{
+            p1.move_distance(p2)
+        }
+        else{
+            p1.manhattan_distance(p2)
+        }
     }
     fn can_move_to(&self, pos: Point) -> bool {
         self.in_bounds(pos.x, pos.y) && !self.grid.get(pos.x as usize, pos.y as usize)
@@ -163,14 +171,14 @@ impl PathingGrid {
     }
     fn pathfinding_neighborhood(&self, pos: &Point) -> Vec<(Point, i32)> {
         if self.allow_diagonal_move {
-        pos.moore_neighborhood()
+            pos.moore_neighborhood()
         } else {
             pos.neumann_neighborhood()
         }
-            .into_iter()
+        .into_iter()
         .filter(|p| self.can_move_to(*p))
-            .map(|p| (p, 1))
-            .collect::<Vec<_>>()
+        .map(|p| (p, 1))
+        .collect::<Vec<_>>()
     }
     fn update_neighbours(&mut self, x: i32, y: i32, blocked: bool) {
         let p = Point::new(x, y);
@@ -291,14 +299,14 @@ impl PathingGrid {
         }
         let result = astar_jps(
             &start,
-            |&parent, node| {
-                self.jps_neighbours(parent, node, &|node_pos| goals.contains(&node_pos))
+            |parent, node| {
+                self.jps_neighbours(*parent, node, &|node_pos| goals.contains(&node_pos))
             },
-            |&point| {
-                (goals.iter().map(|x| point.move_distance(*x)).min().unwrap() as f32
+            |point| {
+                (goals.iter().map(|x| self.point_heuristic(&point,x)).min().unwrap() as f32
                     * self.heuristic_factor) as i32
             },
-            |node_pos| goals.contains(&node_pos),
+            |point| goals.contains(&point),
         );
         result.map(|(v, _c)| (*v.last().unwrap(), v))
     }
@@ -317,13 +325,13 @@ impl PathingGrid {
             // A neighbour of the goal can be reached, compute a path
             astar_jps(
                 &start,
-                |&parent, node| {
-                    self.jps_neighbours(parent, node, &|node_pos| {
-                        node_pos.move_distance(&goal) <= 1
+                |parent, node| {
+                    self.jps_neighbours(*parent, node, &|node_pos| {
+                        self.point_heuristic(&node_pos,&goal) <= 1
                     })
                 },
-                |&point| (point.move_distance(&goal) as f32 * self.heuristic_factor) as i32,
-                |node_pos| node_pos.move_distance(&goal) <= 1,
+                |point| (self.point_heuristic(point,&goal) as f32 * self.heuristic_factor) as i32,
+                |point| self.point_heuristic(point,&goal) <= 1,
             )
         } else {
             if self.unreachable(&start, &goal) {
@@ -333,9 +341,9 @@ impl PathingGrid {
             // The goal is reachable from the start, compute a path
             astar_jps(
                 &start,
-                |&parent, node| self.jps_neighbours(parent, node, &|node_pos| *node_pos == goal),
-                |&point| (point.move_distance(&goal) as f32 * self.heuristic_factor) as i32,
-                |node_pos| *node_pos == goal,
+                |parent, node| self.jps_neighbours(*parent, node, &|node_pos| *node_pos == goal),
+                |point| (self.point_heuristic(point,&goal) as f32 * self.heuristic_factor) as i32,
+                |point| *point == goal,
             )
         }
         .map(|(v, _c)| v)
