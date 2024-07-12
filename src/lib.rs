@@ -46,10 +46,9 @@ pub struct PathingGrid {
     pub components: UnionFind<usize>,
     pub components_dirty: bool,
     pub heuristic_factor: f32,
+    pub improved_pruning: bool, 
     pub allow_diagonal_move: bool,
 }
-
-const IMPROVED_PRUNING: bool = true;
 
 impl Default for PathingGrid {
     fn default() -> PathingGrid {
@@ -58,6 +57,7 @@ impl Default for PathingGrid {
             neighbours: SimpleGrid::default(),
             components: UnionFind::new(0),
             components_dirty: false,
+            improved_pruning: true,
             heuristic_factor: 1.0,
             allow_diagonal_move: true,
         }
@@ -194,7 +194,7 @@ impl PathingGrid {
                     if let Some((jumped_node, cost)) = self.jump(node, c, dir, goal) {
                         let neighbour_dir = node.dir_obj(&jumped_node);
                         // If improved pruning is enabled, expand any diagonal and unforced
-                        if IMPROVED_PRUNING
+                        if self.improved_pruning
                             && dir.diagonal()
                             && !self.is_forced(neighbour_dir, &jumped_node)
                         {
@@ -392,6 +392,7 @@ impl Grid<bool> for PathingGrid {
             neighbours: SimpleGrid::new(width, height, 255),
             components: UnionFind::new(width * height),
             components_dirty: false,
+            improved_pruning: true,
             heuristic_factor: 1.0,
             allow_diagonal_move: true,
         };
@@ -485,6 +486,22 @@ mod tests {
     #[test]
     fn solve_simple_problem() {
         let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
+        pathing_grid.improved_pruning = false;
+        pathing_grid.set(1, 1, true);
+        pathing_grid.generate_components();
+        let start = Point::new(0, 0);
+        let end = Point::new(2, 2);
+        let path = pathing_grid
+            .get_path_single_goal(start, end, false)
+            .unwrap();
+        // The shortest path takes 4 steps
+        assert!(path.len() == 4);
+    }
+
+    /// Corresponds to the simple example, asserts that the optimal 4 step solution is found.
+    #[test]
+    fn solve_simple_problem_improved_pruning() {
+        let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
         pathing_grid.set(1, 1, true);
         pathing_grid.generate_components();
         let start = Point::new(0, 0);
@@ -498,6 +515,20 @@ mod tests {
 
     #[test]
     fn test_multiple_goals() {
+        let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
+        pathing_grid.improved_pruning = false;
+        pathing_grid.set(1, 1, true);
+        pathing_grid.generate_components();
+        let start = Point::new(0, 0);
+        let goal_1 = Point::new(4, 4);
+        let goal_2 = Point::new(2, 2);
+        let goals = vec![&goal_1, &goal_2];
+        let (selected_goal, _) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
+        assert_eq!(selected_goal, Point::new(2, 2));
+    }
+
+    #[test]
+    fn test_multiple_goals_improved_pruning() {
         let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
         pathing_grid.set(1, 1, true);
         pathing_grid.generate_components();
