@@ -65,8 +65,11 @@ impl Default for PathingGrid {
 }
 impl PathingGrid {
     fn get_neighbours(&self, point: Point) -> Vec<Point> {
-        point
-            .moore_neighborhood()
+        if self.allow_diagonal_move {
+            point.moore_neighborhood()
+        } else {
+            point.neumann_neighborhood()
+        }
             .into_iter()
             .filter(|p| self.can_move_to(*p))
             .collect::<Vec<Point>>()
@@ -159,9 +162,13 @@ impl PathingGrid {
         self.jump(&new_n, cost + 1, direction, goal)
     }
     fn pathfinding_neighborhood(&self, pos: &Point) -> Vec<(Point, i32)> {
+        if self.allow_diagonal_move {
         pos.moore_neighborhood()
+        } else {
+            pos.neumann_neighborhood()
+        }
             .into_iter()
-            .filter(|&position| self.can_move_to(position))
+        .filter(|p| self.can_move_to(*p))
             .map(|p| (p, 1))
             .collect::<Vec<_>>()
     }
@@ -203,9 +210,7 @@ impl PathingGrid {
                             // Extend the successors with the neighbours of the unforced node, correcting the
                             // cost to include the cost from parent_node to jumped_node
                             succ.extend(jump_points.into_iter().map(|(p, c)| (p, c + cost)));
-                        }
-                        else
-                        {
+                        } else {
                             succ.push((jumped_node, cost));
                         }
                     }
@@ -238,7 +243,12 @@ impl PathingGrid {
     pub fn neighbours_unreachable(&self, start: &Point, goal: &Point) -> bool {
         if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
             let start_ix = self.get_ix_point(start);
-            !goal.moore_neighborhood().iter().any(|p| {
+            let neighborhood = if self.allow_diagonal_move {
+                goal.moore_neighborhood()
+            } else {
+                goal.neumann_neighborhood()
+            };
+            !neighborhood.iter().any(|p| {
                 self.in_bounds(p.x, p.y) && self.components.equiv(start_ix, self.get_ix_point(&p))
             })
         } else {
@@ -525,6 +535,8 @@ mod tests {
         let goals = vec![&goal_1, &goal_2];
         let (selected_goal, _) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
         assert_eq!(selected_goal, Point::new(2, 2));
+        // The shortest path takes 4 steps
+        assert!(path.len() == 4);
     }
 
     #[test]
@@ -538,5 +550,7 @@ mod tests {
         let goals = vec![&goal_1, &goal_2];
         let (selected_goal, _) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
         assert_eq!(selected_goal, Point::new(2, 2));
+        // The shortest path takes 4 steps
+        assert!(path.len() == 4);
     }
 }
