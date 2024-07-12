@@ -204,7 +204,7 @@ impl PathingGrid {
                             // cost to include the cost from parent_node to jumped_node
                             succ.extend(jump_points.into_iter().map(|(p, c)| (p, c + cost)));
                         }
-                        // TODO: check if there should be an else here?
+                        else
                         {
                             succ.push((jumped_node, cost));
                         }
