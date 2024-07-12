@@ -533,7 +533,7 @@ mod tests {
         let goal_1 = Point::new(4, 4);
         let goal_2 = Point::new(2, 2);
         let goals = vec![&goal_1, &goal_2];
-        let (selected_goal, _) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
+        let (selected_goal, path) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
         assert_eq!(selected_goal, Point::new(2, 2));
         // The shortest path takes 4 steps
         assert!(path.len() == 4);
@@ -548,9 +548,32 @@ mod tests {
         let goal_1 = Point::new(4, 4);
         let goal_2 = Point::new(2, 2);
         let goals = vec![&goal_1, &goal_2];
-        let (selected_goal, _) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
+        let (selected_goal, path) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
         assert_eq!(selected_goal, Point::new(2, 2));
         // The shortest path takes 4 steps
         assert!(path.len() == 4);
+    }
+
+    #[test]
+    fn test_diagonal_switch() {
+        // Tests the effect of allowing diagonals in solving the following 2x2 grid:
+        //  ___
+        // | #|
+        // |# |
+        //  __
+        let mut pathing_grid: PathingGrid = PathingGrid::new(2, 2, true);
+        pathing_grid.allow_diagonal_move = false;
+        let mut pathing_grid_diag: PathingGrid = PathingGrid::new(2, 2, true);
+        for pathing_grid in [&mut pathing_grid, &mut pathing_grid_diag] {
+            pathing_grid.set(0, 0, false);
+            pathing_grid.set(1, 1, false);
+            pathing_grid.generate_components();
+        }
+        let start = Point::new(0, 0);
+        let goal = Point::new(1, 1);
+        let path = pathing_grid.get_path_single_goal(start, goal, false);
+        let path_diag = pathing_grid_diag.get_path_single_goal(start, goal, false);
+        assert!(path.is_none());
+        assert!(path_diag.is_some());
     }
 }
