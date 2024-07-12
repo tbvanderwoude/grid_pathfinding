@@ -74,11 +74,11 @@ impl PathingGrid {
         .filter(|p| self.can_move_to(*p))
         .collect::<Vec<Point>>()
     }
-    fn point_heuristic(&self, p1: &Point, p2: &Point) ->  i32{
-        if self.allow_diagonal_move{
+    /// Use the move distance or manhattan distance depending on whether diagonal moves are allowed.
+    fn heuristic(&self, p1: &Point, p2: &Point) -> i32 {
+        if self.allow_diagonal_move {
             p1.move_distance(p2)
-        }
-        else{
+        } else {
             p1.manhattan_distance(p2)
         }
     }
@@ -303,7 +303,11 @@ impl PathingGrid {
                 self.jps_neighbours(*parent, node, &|node_pos| goals.contains(&node_pos))
             },
             |point| {
-                (goals.iter().map(|x| self.point_heuristic(&point,x)).min().unwrap() as f32
+                (goals
+                    .iter()
+                    .map(|x| self.heuristic(&point, x))
+                    .min()
+                    .unwrap() as f32
                     * self.heuristic_factor) as i32
             },
             |point| goals.contains(&point),
@@ -327,22 +331,21 @@ impl PathingGrid {
                 &start,
                 |parent, node| {
                     self.jps_neighbours(*parent, node, &|node_pos| {
-                        self.point_heuristic(&node_pos,&goal) <= 1
+                        self.heuristic(&node_pos, &goal) <= 1
                     })
                 },
-                |point| (self.point_heuristic(point,&goal) as f32 * self.heuristic_factor) as i32,
-                |point| self.point_heuristic(point,&goal) <= 1,
+                |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
+                |point| self.heuristic(point, &goal) <= 1,
             )
         } else {
             if self.unreachable(&start, &goal) {
-                // The goal is unreachable from the start
                 return None;
             }
             // The goal is reachable from the start, compute a path
             astar_jps(
                 &start,
                 |parent, node| self.jps_neighbours(*parent, node, &|node_pos| *node_pos == goal),
-                |point| (self.point_heuristic(point,&goal) as f32 * self.heuristic_factor) as i32,
+                |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
                 |point| *point == goal,
             )
         }
