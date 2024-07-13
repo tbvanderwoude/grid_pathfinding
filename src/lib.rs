@@ -35,6 +35,8 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
     path
 }
 
+const DEBUG_PRINT: bool = false;
+
 /// [PathingGrid] maintains information about components using a [UnionFind] structure in addition to the raw
 /// [bool] grid values in the [BoolGrid] that determine whether a space is occupied ([true]) or
 /// empty ([false]). It also records neighbours in [u8] format for fast lookups during search.
@@ -100,6 +102,15 @@ impl PathingGrid {
             !self.indexed_neighbor(node, 2 + dir_num) || !self.indexed_neighbor(node, dir_num + 6)
         }
     }
+    fn explain_bin_neighborhood(nn: u8){
+        for i in 0..8_i32{
+            let x =  nn & (1 << i) != 0;
+            let dir = Direction::try_from(i.rem_euclid(8)).unwrap();
+            if x{
+                println!("\t\t {dir:?}");
+            }
+        }
+    }
     fn pruned_neighborhood<'a>(
         &self,
         dir: Direction,
@@ -107,9 +118,16 @@ impl PathingGrid {
     ) -> (impl Iterator<Item = (Point, i32)> + 'a, bool) {
         let dir_num = dir.num();
         let mut n_mask: u8;
-        let neighbours = self.neighbours.get_point(*node);
+        if DEBUG_PRINT{
+            println!("Pruned neighborhood of {node:?} to the {dir:?} of parent.");
+            println!("\tNeighbours: {neighbours:#010b}");
+            PathingGrid::explain_bin_neighborhood(neighbours);
+        }
         let mut forced = false;
         if dir.diagonal() {
+            if DEBUG_PRINT{
+                println!("\tDiagonal: {dir_num} or {dir:?}");
+            }
             n_mask = 0b11000001_u8.rotate_left(dir_num as u32);
             if !self.indexed_neighbor(node, 3 + dir_num) {
                 n_mask |= 1 << ((dir_num + 2) % 8);
@@ -120,6 +138,9 @@ impl PathingGrid {
                 forced = true;
             }
         } else {
+            if DEBUG_PRINT{            
+                println!("\tStraight: {dir_num} or {dir:?}");
+            }
             n_mask = 0b00000001 << dir_num;
             if !self.indexed_neighbor(node, 2 + dir_num) {
                 n_mask |= 1 << ((dir_num + 1) % 8);
@@ -131,6 +152,12 @@ impl PathingGrid {
             }
         }
         let comb_mask = neighbours & n_mask;
+        if DEBUG_PRINT{
+            println!("\tForced neighbour mask: {n_mask:#010b}");
+            PathingGrid::explain_bin_neighborhood(n_mask);
+            println!("\tCombined mask: {comb_mask:#010b}");
+            PathingGrid::explain_bin_neighborhood(comb_mask)
+        };
         (
             (0..8)
                 .step_by(if self.allow_diagonal_move { 1 } else { 2 })
@@ -202,6 +229,9 @@ impl PathingGrid {
     {
         match parent {
             Some(parent_node) => {
+                if DEBUG_PRINT{
+                    println!("Point: {:?}; Parent: {:?}",node, parent_node);
+                }
                 let mut succ = vec![];
                 let dir = parent_node.dir_obj(node);
                 for (n, c) in self.pruned_neighborhood(dir, &node).0 {
@@ -219,13 +249,25 @@ impl PathingGrid {
                             // cost to include the cost from parent_node to jumped_node
                             succ.extend(jump_points.into_iter().map(|(p, c)| (p, c + cost)));
                         } else {
+                            if DEBUG_PRINT{
+                                println!("\tJumped node: {:?}",jumped_node);
+                            }
                             succ.push((jumped_node, cost));
                         }
                     }
                 }
+                if DEBUG_PRINT{
+                    println!("\tFinal successors: {:?}",succ);
+                }
                 succ
             }
-            None => self.pathfinding_neighborhood(node),
+            None => {
+                let pf_neighborhood = self.pathfinding_neighborhood(node);
+                if DEBUG_PRINT{
+                    println!("Initial neighborhood: {:?}",pf_neighborhood);
+                }
+                pf_neighborhood
+            }
         }
     }
     /// Retrieves the component id a given [Point] belongs to.
