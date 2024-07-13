@@ -209,7 +209,7 @@ impl PathingGrid {
     }
     fn update_neighbours(&mut self, x: i32, y: i32, blocked: bool) {
         let p = Point::new(x, y);
-        for i in 0..8 {
+        for i in (0..8).step_by(if self.allow_diagonal_move { 1 } else { 2 }) {
             let neighbor = p.moore_neighbor(i);
             if self.in_bounds(neighbor.x, neighbor.y) {
                 let ix = (i + 4) % 8;
