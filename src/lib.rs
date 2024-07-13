@@ -118,6 +118,10 @@ impl PathingGrid {
     ) -> (impl Iterator<Item = (Point, i32)> + 'a, bool) {
         let dir_num = dir.num();
         let mut n_mask: u8;
+        let mut neighbours = self.neighbours.get_point(*node);
+        if !self.allow_diagonal_move{
+            neighbours &= 0b01010101;
+        }
         if DEBUG_PRINT{
             println!("Pruned neighborhood of {node:?} to the {dir:?} of parent.");
             println!("\tNeighbours: {neighbours:#010b}");
@@ -142,13 +146,25 @@ impl PathingGrid {
                 println!("\tStraight: {dir_num} or {dir:?}");
             }
             n_mask = 0b00000001 << dir_num;
-            if !self.indexed_neighbor(node, 2 + dir_num) {
-                n_mask |= 1 << ((dir_num + 1) % 8);
-                forced = true;
+            if self.allow_diagonal_move{
+                if !self.indexed_neighbor(node, 2 + dir_num) {
+                    n_mask |= 1 << ((dir_num + 1) % 8);
+                    forced = true;
+                }
+                if !self.indexed_neighbor(node, 6 + dir_num) {
+                    n_mask |= 1 << ((dir_num + 7) % 8);
+                    forced = true;
+                }
             }
-            if !self.indexed_neighbor(node, 6 + dir_num) {
-                n_mask |= 1 << ((dir_num + 7) % 8);
-                forced = true;
+            else{
+                if !self.indexed_neighbor(node, 3 + dir_num) || !self.indexed_neighbor(node, 1 + dir_num) {
+                    n_mask |= 1 << ((dir_num + 2) % 8);
+                    forced = true;
+                }
+                if !self.indexed_neighbor(node, 5 + dir_num) || !self.indexed_neighbor(node, 7 + dir_num) {
+                    n_mask |= 1 << ((dir_num + 6) % 8);
+                    forced = true;
+                }
             }
         }
         let comb_mask = neighbours & n_mask;
