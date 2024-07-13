@@ -164,13 +164,11 @@ impl PathingGrid {
                 }
             } else {
                 if !self.indexed_neighbor(node, 3 + dir_num)
-                    || !self.indexed_neighbor(node, 1 + dir_num)
                 {
                     n_mask |= 1 << ((dir_num + 6) % 8);
                     forced = true;
                 }
                 if !self.indexed_neighbor(node, 5 + dir_num)
-                    || !self.indexed_neighbor(node, 7 + dir_num)
                 {
                     n_mask |= 1 << ((dir_num + 2) % 8);
                     forced = true;
