@@ -104,7 +104,8 @@ impl PathingGrid {
                     || !self.indexed_neighbor(node, dir_num + 6)
             } else {
                 !self.indexed_neighbor(node, 3 + dir_num)
-                    || !self.indexed_neighbor(node, dir_num + 5)
+                    || !self.indexed_neighbor(node, dir_num + 5) 
+                    //|| !self.indexed_neighbor(node, dir_num)
             }
         }
     }
@@ -174,6 +175,12 @@ impl PathingGrid {
                     n_mask |= 1 << ((dir_num + 2) % 8);
                     forced = true;
                 }
+                if !self.indexed_neighbor(node, dir_num)
+                {
+                    n_mask |= 1 << ((dir_num + 6) % 8);
+                    n_mask |= 1 << ((dir_num + 2) % 8);
+                    forced = true;
+                }
             }
         }
         let comb_mask = neighbours & n_mask;
@@ -213,6 +220,7 @@ impl PathingGrid {
         if self.is_forced(direction, &new_n) {
             return Some((new_n, cost));
         }
+
         if direction.diagonal()
             && (self.jump(&new_n, 1, direction.x_dir(), goal).is_some()
                 || self.jump(&new_n, 1, direction.y_dir(), goal).is_some())
@@ -220,15 +228,16 @@ impl PathingGrid {
             return Some((new_n, cost));
         }
         if !self.allow_diagonal_move && !direction.diagonal() {
-            let dx = direction.x_dir();
-            let dy = direction.y_dir();
-            if dx != Direction::NONE && self.jump(&new_n, 1, dx, goal).is_some()
-                || dy != Direction::NONE && self.jump(&new_n, 1, dy, goal).is_some()
-            {
-                return Some((new_n, cost));
+            if !self.can_move_to(new_n + direction) {
+                let perp_1 = direction.rotate_ccw(2);
+                let perp_2 = direction.rotate_cw(2);
+                if self.jump(&new_n, 1, perp_1, goal).is_some()
+                    ||self.jump(&new_n, 1, perp_2, goal).is_some()
+                {
+                    return Some((new_n, cost));
+                }
             }
         }
-
         self.jump(&new_n, cost + 1, direction, goal)
     }
     fn pathfinding_neighborhood(&self, pos: &Point) -> Vec<(Point, i32)> {
@@ -244,7 +253,7 @@ impl PathingGrid {
     }
     fn update_neighbours(&mut self, x: i32, y: i32, blocked: bool) {
         let p = Point::new(x, y);
-        for i in (0..8).step_by(if self.allow_diagonal_move { 1 } else { 2 }) {
+        for i in 0..8 {
             let neighbor = p.moore_neighbor(i);
             if self.in_bounds(neighbor.x, neighbor.y) {
                 let ix = (i + 4) % 8;
