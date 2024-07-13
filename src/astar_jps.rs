@@ -8,6 +8,7 @@ use num_traits::Zero;
 
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
+use log::warn;
 
 use std::hash::Hash;
 
@@ -123,5 +124,6 @@ where
             });
         }
     }
+    warn!("Reachable goal could not be pathed to, is reachable graph correct?");
     None
 }
