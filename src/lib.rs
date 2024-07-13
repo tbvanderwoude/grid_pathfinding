@@ -21,6 +21,9 @@ use std::collections::VecDeque;
 /// Turns waypoints into a path on the grid which can be followed step by step. Due to symmetry this
 /// is typically one of many ways to follow the waypoints.
 pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
+    if DEBUG_PRINT{
+        println!("Waypoints:\n\t{:?}",&waypoints)
+    }
     let mut waypoint_queue = waypoints.into_iter().collect::<VecDeque<Point>>();
     let mut path: Vec<Point> = Vec::new();
     let mut current = waypoint_queue.pop_front().unwrap();
@@ -31,6 +34,9 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
             current = current + delta;
             path.push(current);
         }
+    }
+    if DEBUG_PRINT{
+        println!("Path:\n\t{:?}",&path)
     }
     path
 }
@@ -295,6 +301,11 @@ impl PathingGrid {
                                 println!("\tJumped node: {:?}", jumped_node);
                             }
                             succ.push((jumped_node, cost));
+                        }
+                    }
+                    else{
+                        if DEBUG_PRINT {
+                            println!("\tNode went nowhere after jumping: {:?}", n);
                         }
                     }
                 }
@@ -562,7 +573,22 @@ impl Grid<bool> for PathingGrid {
 
 #[cfg(test)]
 mod tests {
+    use grid_util::Rect;
+
     use super::*;
+    fn visualize_grid(grid: &PathingGrid) {
+        let grid = &grid.grid;
+        for y in (0..grid.height).rev() {
+            for x in 0..grid.width {
+                if grid.get(x, y) {
+                    print!("#");
+                } else {
+                    print!(".");
+                }
+            }
+            println!();
+        }
+    }
     /// Tests whether points are correctly mapped to different connected components
     #[test]
     fn test_component_generation() {
@@ -590,7 +616,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unreachable() {
+    fn reachable_with_diagonals() {
         let mut path_graph = PathingGrid::new(3, 2, false);
         path_graph.grid.set(1, 0, true);
         path_graph.grid.set(1, 1, true);
