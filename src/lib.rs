@@ -343,9 +343,13 @@ impl PathingGrid {
         }
     }
     /// Computes a path from start to goal using JPS. If approximate is [true], then it will
-    /// path to one of the neighbours of the goal, which is useful if goal itself is
-    /// blocked. The heuristic used is the
-    /// [Chebyshev distance](https://en.wikipedia.org/wiki/Chebyshev_distance).
+    /// path to one of the neighbours of the goal, which is useful if the goal itself is
+    /// blocked. The heuristic used is the [move (Chebyshev) distance](https://en.wikipedia.org/wiki/Chebyshev_distance) or
+    /// [Manhattan distance](https://en.wikipedia.org/wiki/Taxicab_geometry) depending on whether diagonal moves are allowed (see [heuristic](Self::heuristic)). This can be
+    /// specified by setting [allow_diagonal_move](Self::allow_diagonal_move).
+    /// The heuristic will be scaled by [heuristic_factor](Self::heuristic_factor) which can be used to trade optimality for faster solving for many practical problems. In pathfinding language, a factor greater than
+    /// 1.0 will make the heuristic [inadmissible](https://en.wikipedia.org/wiki/Admissible_heuristic), a requirement for solution optimality. By default,
+    /// the [heuristic_factor](Self::heuristic_factor) is 1.0 which gives optimal solutions.
     pub fn get_path_single_goal(
         &self,
         start: Point,
@@ -356,9 +360,7 @@ impl PathingGrid {
             .map(|x| waypoints_to_path(x))
     }
 
-    /// Computes a path from start to one of the given goals. This is done by taking the
-    /// [Chebyshev distance](https://en.wikipedia.org/wiki/Chebyshev_distance)
-    /// to the closest goal as heuristic value.
+    /// Computes a path from the start to one of the given goals and returns the selected goal in addition to the found path. Otherwise behaves similar to [get_path_single_goal](Self::get_path_single_goal).
     pub fn get_path_multiple_goals(
         &self,
         start: Point,
