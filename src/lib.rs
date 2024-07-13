@@ -18,6 +18,8 @@ use crate::astar_jps::astar_jps;
 use core::fmt;
 use std::collections::VecDeque;
 
+const DEBUG_PRINT: bool = true;
+
 /// Turns waypoints into a path on the grid which can be followed step by step. Due to symmetry this
 /// is typically one of many ways to follow the waypoints.
 pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
@@ -41,7 +43,6 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
     path
 }
 
-const DEBUG_PRINT: bool = false;
 
 /// [PathingGrid] maintains information about components using a [UnionFind] structure in addition to the raw
 /// [bool] grid values in the [BoolGrid] that determine whether a space is occupied ([true]) or
@@ -111,7 +112,6 @@ impl PathingGrid {
             } else {
                 !self.indexed_neighbor(node, 3 + dir_num)
                     || !self.indexed_neighbor(node, dir_num + 5) 
-                    //|| !self.indexed_neighbor(node, dir_num)
             }
         }
     }
@@ -655,95 +655,123 @@ mod tests {
     /// Asserts that the optimal 4 step solution is found. Does not allow diagonals.
     #[test]
     fn solve_simple_problem() {
-        let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
-        // pathing_grid.improved_pruning = false;
-        pathing_grid.allow_diagonal_move = false;
-        pathing_grid.set(1, 1, true);
-        pathing_grid.generate_components();
-        let start = Point::new(0, 0);
-        let end = Point::new(2, 2);
-        let path = pathing_grid
-            .get_path_single_goal(start, end, false)
-            .unwrap();
-        // The shortest path takes 5 steps
-        assert!(path.len() == 5);
-    }
-
-    /// Asserts that the optimal 4 step solution is found. Allows diagonals.
-    #[test]
-    fn solve_simple_problem_diagonals() {
-        let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
-        pathing_grid.improved_pruning = false;
-        pathing_grid.set(1, 1, true);
-        pathing_grid.generate_components();
-        let start = Point::new(0, 0);
-        let end = Point::new(2, 2);
-        let path = pathing_grid
-            .get_path_single_goal(start, end, false)
-            .unwrap();
-        // The shortest path takes 4 steps
-        assert!(path.len() == 4);
-    }
-
-    /// Asserts that the optimal 4 step solution is found. Uses improved pruning and allows diagonals (default behaviour).
-    #[test]
-    fn solve_simple_problem_improved_pruning() {
-        let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
-        pathing_grid.set(1, 1, true);
-        pathing_grid.generate_components();
-        let start = Point::new(0, 0);
-        let end = Point::new(2, 2);
-        let path = pathing_grid
-            .get_path_single_goal(start, end, false)
-            .unwrap();
-        // The shortest path takes 4 steps
-        assert!(path.len() == 4);
+        for (allow_diag, pruning, expected) in
+            [(false, false, 5), (true, false, 4), (true, true, 4)]
+        {
+            let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
+            // pathing_grid.improved_pruning = false;
+            pathing_grid.allow_diagonal_move = allow_diag;
+            pathing_grid.improved_pruning = pruning;
+            pathing_grid.set(1, 1, true);
+            pathing_grid.generate_components();
+            let start = Point::new(0, 0);
+            let end = Point::new(2, 2);
+            let path = pathing_grid
+                .get_path_single_goal(start, end, false)
+                .unwrap();
+            // The shortest path takes 5 steps
+            assert!(path.len() == expected);
+        }
     }
 
     #[test]
     fn test_multiple_goals() {
-        let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
-        pathing_grid.allow_diagonal_move = false;
-        pathing_grid.improved_pruning = false;
-        pathing_grid.set(1, 1, true);
-        pathing_grid.generate_components();
-        let start = Point::new(0, 0);
-        let goal_1 = Point::new(4, 4);
-        let goal_2 = Point::new(2, 2);
-        let goals = vec![&goal_1, &goal_2];
-        let (selected_goal, path) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
-        assert_eq!(selected_goal, Point::new(2, 2));
-        assert!(path.len() == 5);
+        for (allow_diag, pruning, expected) in
+            [(false, false, 7), (true, false, 5), (true, true, 5)]
+        {
+            let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
+            pathing_grid.allow_diagonal_move = allow_diag;
+            pathing_grid.improved_pruning = pruning;
+            pathing_grid.set(1, 1, true);
+            pathing_grid.generate_components();
+            let start = Point::new(0, 0);
+            let goal_1 = Point::new(4, 4);
+            let goal_2 = Point::new(3, 3);
+            let goals = vec![&goal_1, &goal_2];
+            let (selected_goal, path) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
+            assert_eq!(selected_goal, Point::new(3, 3));
+            println!("{}", path.len());
+            assert!(path.len() == expected);
+        }
     }
 
     #[test]
-    fn test_multiple_goals_diagonals() {
-        let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
-        pathing_grid.improved_pruning = false;
-        pathing_grid.set(1, 1, true);
-        pathing_grid.generate_components();
-        let start = Point::new(0, 0);
-        let goal_1 = Point::new(4, 4);
-        let goal_2 = Point::new(2, 2);
-        let goals = vec![&goal_1, &goal_2];
-        let (selected_goal, path) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
-        assert_eq!(selected_goal, Point::new(2, 2));
-        assert!(path.len() == 4);
+    fn test_complex() {
+        for (allow_diag, pruning, expected) in
+            [(false, false, 15), (true, false, 10), (true, true, 10)]
+        {
+            let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
+            pathing_grid.set_rectangle(&Rect::new(1,1,2,2), true);
+            pathing_grid.set_rectangle(&Rect::new(5,0,2,2), true);
+            pathing_grid.set_rectangle(&Rect::new(0,5,2,2), true);
+            pathing_grid.set_rectangle(&Rect::new(8,8,2,2), true);
+            visualize_grid(&pathing_grid);
+            // pathing_grid.improved_pruning = false;
+            pathing_grid.allow_diagonal_move = allow_diag;
+            pathing_grid.improved_pruning = pruning;
+            pathing_grid.generate_components();
+            let start = Point::new(0, 0);
+            let end = Point::new(7, 7);
+            let path = pathing_grid
+                .get_path_single_goal(start, end, false)
+                .unwrap();
+            // The shortest path takes 5 steps
+            println!("{}",path.len());
+            assert!(path.len() == expected);
+        }
+    }
+
+
+    #[test]
+    fn test_complex_2() {
+        for (allow_diag, pruning, expected) in
+            [(false, false, 19), (true, false, 12), (true, true, 12)]
+        {
+            let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
+            pathing_grid.set_rectangle(&Rect::new(1,1,2,2), true);
+            pathing_grid.set_rectangle(&Rect::new(5,0,2,2), true);
+            pathing_grid.set_rectangle(&Rect::new(0,5,2,2), true);
+            visualize_grid(&pathing_grid);
+            // pathing_grid.improved_pruning = false;
+            pathing_grid.allow_diagonal_move = allow_diag;
+            pathing_grid.improved_pruning = pruning;
+            pathing_grid.generate_components();
+            let start = Point::new(0, 0);
+            let end = Point::new(9, 9);
+            let path = pathing_grid
+                .get_path_single_goal(start, end, false)
+                .unwrap();
+            // The shortest path takes 5 steps
+            println!("{}",path.len());
+            assert!(path.len() == expected);
+        }
     }
 
     #[test]
-    fn test_multiple_goals_improved_pruning() {
-        let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
-        pathing_grid.set(1, 1, true);
-        pathing_grid.generate_components();
-        let start = Point::new(0, 0);
-        let goal_1 = Point::new(4, 4);
-        let goal_2 = Point::new(2, 2);
-        let goals = vec![&goal_1, &goal_2];
-        let (selected_goal, path) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
-        assert_eq!(selected_goal, Point::new(2, 2));
-        // The shortest path takes 4 steps
-        assert!(path.len() == 4);
+    fn test_complex_3() {
+        for (allow_diag, pruning, expected) in
+            [(false, false, 9), (true, false, 6), (true, true, 6)]
+        {
+            let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
+            pathing_grid.set_rectangle(&Rect::new(1,1,1,1), true);
+            pathing_grid.set_rectangle(&Rect::new(3,0,1,1), true);
+            pathing_grid.set_rectangle(&Rect::new(0,3,1,1), true);
+            pathing_grid.set_rectangle(&Rect::new(2,3,1,1), true);
+            // pathing_grid.set_rectangle(&Rect::new(3,2,1,1), true);
+            visualize_grid(&pathing_grid);
+            // pathing_grid.improved_pruning = false;
+            pathing_grid.allow_diagonal_move = allow_diag;
+            pathing_grid.improved_pruning = pruning;
+            pathing_grid.generate_components();
+            let start = Point::new(0, 0);
+            let end = Point::new(4, 4);
+            let path = pathing_grid
+                .get_path_single_goal(start, end, false)
+                .unwrap();
+            // The shortest path takes 5 steps
+            println!("{}",path.len());
+            assert!(path.len() == expected);
+        }
     }
 
     #[test]
