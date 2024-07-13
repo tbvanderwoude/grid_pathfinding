@@ -77,7 +77,7 @@ impl PathingGrid {
         .collect::<Vec<Point>>()
     }
     /// Use the move distance or manhattan distance depending on whether diagonal moves are allowed.
-    fn heuristic(&self, p1: &Point, p2: &Point) -> i32 {
+    pub fn heuristic(&self, p1: &Point, p2: &Point) -> i32 {
         if self.allow_diagonal_move {
             p1.move_distance(p2)
         } else {
