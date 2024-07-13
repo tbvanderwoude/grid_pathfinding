@@ -99,7 +99,13 @@ impl PathingGrid {
         if dir.diagonal() {
             !self.indexed_neighbor(node, 3 + dir_num) || !self.indexed_neighbor(node, 5 + dir_num)
         } else {
-            !self.indexed_neighbor(node, 2 + dir_num) || !self.indexed_neighbor(node, dir_num + 6)
+            if self.allow_diagonal_move {
+                !self.indexed_neighbor(node, 2 + dir_num)
+                    || !self.indexed_neighbor(node, dir_num + 6)
+            } else {
+                !self.indexed_neighbor(node, 3 + dir_num)
+                    || !self.indexed_neighbor(node, dir_num + 5)
+            }
         }
     }
     fn explain_bin_neighborhood(nn: u8){
@@ -210,6 +216,16 @@ impl PathingGrid {
         {
             return Some((new_n, cost));
         }
+        if !self.allow_diagonal_move && !direction.diagonal() {
+            let dx = direction.x_dir();
+            let dy = direction.y_dir();
+            if dx != Direction::NONE && self.jump(&new_n, 1, dx, goal).is_some()
+                || dy != Direction::NONE && self.jump(&new_n, 1, dy, goal).is_some()
+            {
+                return Some((new_n, cost));
+            }
+        }
+
         self.jump(&new_n, cost + 1, direction, goal)
     }
     fn pathfinding_neighborhood(&self, pos: &Point) -> Vec<(Point, i32)> {
@@ -594,7 +610,7 @@ mod tests {
         let end = Point::new(2, 2);
         assert!(pathing_grid.reachable(&start, &end));
     }
-
+    
     /// Asserts that the optimal 4 step solution is found. Does not allow diagonals.
     #[test]
     fn solve_simple_problem() {
@@ -645,6 +661,22 @@ mod tests {
 
     #[test]
     fn test_multiple_goals() {
+        let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
+        pathing_grid.allow_diagonal_move = false;
+        pathing_grid.improved_pruning = false;
+        pathing_grid.set(1, 1, true);
+        pathing_grid.generate_components();
+        let start = Point::new(0, 0);
+        let goal_1 = Point::new(4, 4);
+        let goal_2 = Point::new(2, 2);
+        let goals = vec![&goal_1, &goal_2];
+        let (selected_goal, path) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
+        assert_eq!(selected_goal, Point::new(2, 2));
+        assert!(path.len() == 5);
+    }
+
+    #[test]
+    fn test_multiple_goals_diagonals() {
         let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
         pathing_grid.improved_pruning = false;
         pathing_grid.set(1, 1, true);
