@@ -485,7 +485,7 @@ impl Grid<bool> for PathingGrid {
     fn new(width: usize, height: usize, default_value: bool) -> Self {
         let mut base_grid = PathingGrid {
             grid: BoolGrid::new(width, height, default_value),
-            neighbours: SimpleGrid::new(width, height, 255),
+            neighbours: SimpleGrid::new(width, height, 0b11111111),
             components: UnionFind::new(width * height),
             components_dirty: false,
             improved_pruning: true,
@@ -595,8 +595,26 @@ mod tests {
         assert!(pathing_grid.reachable(&start, &end));
     }
 
+    /// Asserts that the optimal 4 step solution is found. Does not allow diagonals.
     #[test]
     fn solve_simple_problem() {
+        let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
+        // pathing_grid.improved_pruning = false;
+        pathing_grid.allow_diagonal_move = false;
+        pathing_grid.set(1, 1, true);
+        pathing_grid.generate_components();
+        let start = Point::new(0, 0);
+        let end = Point::new(2, 2);
+        let path = pathing_grid
+            .get_path_single_goal(start, end, false)
+            .unwrap();
+        // The shortest path takes 5 steps
+        assert!(path.len() == 5);
+    }
+
+    /// Asserts that the optimal 4 step solution is found. Allows diagonals.
+    #[test]
+    fn solve_simple_problem_diagonals() {
         let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
         pathing_grid.improved_pruning = false;
         pathing_grid.set(1, 1, true);
@@ -610,7 +628,7 @@ mod tests {
         assert!(path.len() == 4);
     }
 
-    /// Corresponds to the simple example, asserts that the optimal 4 step solution is found.
+    /// Asserts that the optimal 4 step solution is found. Uses improved pruning and allows diagonals (default behaviour).
     #[test]
     fn solve_simple_problem_improved_pruning() {
         let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
@@ -637,7 +655,6 @@ mod tests {
         let goals = vec![&goal_1, &goal_2];
         let (selected_goal, path) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
         assert_eq!(selected_goal, Point::new(2, 2));
-        // The shortest path takes 4 steps
         assert!(path.len() == 4);
     }
 
