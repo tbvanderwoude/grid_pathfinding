@@ -6,9 +6,9 @@ use indexmap::map::Entry::{Occupied, Vacant};
 use indexmap::IndexMap;
 use num_traits::Zero;
 
+use log::warn;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
-use log::warn;
 
 use std::hash::Hash;
 
