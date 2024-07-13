@@ -286,13 +286,15 @@ impl PathingGrid {
                     let dir = node.dir_obj(&n);
                     if let Some((jumped_node, cost)) = self.jump(node, c, dir, goal) {
                         let neighbour_dir = node.dir_obj(&jumped_node);
-                        // If improved pruning is enabled, expand any diagonal and unforced
+                        // If improved pruning is enabled, expand any diagonal unforced nodes
                         if self.improved_pruning
                             && dir.diagonal()
                             && !self.is_forced(neighbour_dir, &jumped_node)
                         {
+                            // Recursively expand the unforced diagonal node
                             let jump_points =
                                 self.jps_neighbours(Some(parent_node), &jumped_node, goal);
+
                             // Extend the successors with the neighbours of the unforced node, correcting the
                             // cost to include the cost from parent_node to jumped_node
                             succ.extend(jump_points.into_iter().map(|(p, c)| (p, c + cost)));
@@ -315,6 +317,7 @@ impl PathingGrid {
                 succ
             }
             None => {
+                // For the starting node, just generate the full normal neighborhood without any pruning or jumping.
                 let pf_neighborhood = self.pathfinding_neighborhood(node);
                 if DEBUG_PRINT {
                     println!("Initial neighborhood: {:?}", pf_neighborhood);
