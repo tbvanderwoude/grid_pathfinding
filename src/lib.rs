@@ -108,11 +108,11 @@ impl PathingGrid {
             }
         }
     }
-    fn explain_bin_neighborhood(nn: u8){
-        for i in 0..8_i32{
-            let x =  nn & (1 << i) != 0;
+    fn explain_bin_neighborhood(nn: u8) {
+        for i in 0..8_i32 {
+            let x = nn & (1 << i) != 0;
             let dir = Direction::try_from(i.rem_euclid(8)).unwrap();
-            if x{
+            if x {
                 println!("\t\t {dir:?}");
             }
         }
@@ -125,17 +125,17 @@ impl PathingGrid {
         let dir_num = dir.num();
         let mut n_mask: u8;
         let mut neighbours = self.neighbours.get_point(*node);
-        if !self.allow_diagonal_move{
+        if !self.allow_diagonal_move {
             neighbours &= 0b01010101;
         }
-        if DEBUG_PRINT{
+        if DEBUG_PRINT {
             println!("Pruned neighborhood of {node:?} to the {dir:?} of parent.");
             println!("\tNeighbours: {neighbours:#010b}");
             PathingGrid::explain_bin_neighborhood(neighbours);
         }
         let mut forced = false;
         if dir.diagonal() {
-            if DEBUG_PRINT{
+            if DEBUG_PRINT {
                 println!("\tDiagonal: {dir_num} or {dir:?}");
             }
             n_mask = 0b11000001_u8.rotate_left(dir_num as u32);
@@ -148,11 +148,11 @@ impl PathingGrid {
                 forced = true;
             }
         } else {
-            if DEBUG_PRINT{            
+            if DEBUG_PRINT {
                 println!("\tStraight: {dir_num} or {dir:?}");
             }
             n_mask = 0b00000001 << dir_num;
-            if self.allow_diagonal_move{
+            if self.allow_diagonal_move {
                 if !self.indexed_neighbor(node, 2 + dir_num) {
                     n_mask |= 1 << ((dir_num + 1) % 8);
                     forced = true;
@@ -161,20 +161,23 @@ impl PathingGrid {
                     n_mask |= 1 << ((dir_num + 7) % 8);
                     forced = true;
                 }
-            }
-            else{
-                if !self.indexed_neighbor(node, 3 + dir_num) || !self.indexed_neighbor(node, 1 + dir_num) {
-                    n_mask |= 1 << ((dir_num + 2) % 8);
+            } else {
+                if !self.indexed_neighbor(node, 3 + dir_num)
+                    || !self.indexed_neighbor(node, 1 + dir_num)
+                {
+                    n_mask |= 1 << ((dir_num + 6) % 8);
                     forced = true;
                 }
-                if !self.indexed_neighbor(node, 5 + dir_num) || !self.indexed_neighbor(node, 7 + dir_num) {
-                    n_mask |= 1 << ((dir_num + 6) % 8);
+                if !self.indexed_neighbor(node, 5 + dir_num)
+                    || !self.indexed_neighbor(node, 7 + dir_num)
+                {
+                    n_mask |= 1 << ((dir_num + 2) % 8);
                     forced = true;
                 }
             }
         }
         let comb_mask = neighbours & n_mask;
-        if DEBUG_PRINT{
+        if DEBUG_PRINT {
             println!("\tForced neighbour mask: {n_mask:#010b}");
             PathingGrid::explain_bin_neighborhood(n_mask);
             println!("\tCombined mask: {comb_mask:#010b}");
@@ -261,8 +264,8 @@ impl PathingGrid {
     {
         match parent {
             Some(parent_node) => {
-                if DEBUG_PRINT{
-                    println!("Point: {:?}; Parent: {:?}",node, parent_node);
+                if DEBUG_PRINT {
+                    println!("Point: {:?}; Parent: {:?}", node, parent_node);
                 }
                 let mut succ = vec![];
                 let dir = parent_node.dir_obj(node);
@@ -281,22 +284,22 @@ impl PathingGrid {
                             // cost to include the cost from parent_node to jumped_node
                             succ.extend(jump_points.into_iter().map(|(p, c)| (p, c + cost)));
                         } else {
-                            if DEBUG_PRINT{
-                                println!("\tJumped node: {:?}",jumped_node);
+                            if DEBUG_PRINT {
+                                println!("\tJumped node: {:?}", jumped_node);
                             }
                             succ.push((jumped_node, cost));
                         }
                     }
                 }
-                if DEBUG_PRINT{
-                    println!("\tFinal successors: {:?}",succ);
+                if DEBUG_PRINT {
+                    println!("\tFinal successors: {:?}", succ);
                 }
                 succ
             }
             None => {
                 let pf_neighborhood = self.pathfinding_neighborhood(node);
-                if DEBUG_PRINT{
-                    println!("Initial neighborhood: {:?}",pf_neighborhood);
+                if DEBUG_PRINT {
+                    println!("Initial neighborhood: {:?}", pf_neighborhood);
                 }
                 pf_neighborhood
             }
@@ -612,7 +615,7 @@ mod tests {
         let end = Point::new(2, 2);
         assert!(pathing_grid.reachable(&start, &end));
     }
-    
+
     /// Asserts that the optimal 4 step solution is found. Does not allow diagonals.
     #[test]
     fn solve_simple_problem() {
