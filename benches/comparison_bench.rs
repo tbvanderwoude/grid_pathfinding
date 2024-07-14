@@ -4,8 +4,8 @@ use grid_util::grid::Grid;
 use grid_util::point::Point;
 use rand::prelude::*;
 
-fn random_grid(n: usize, rng: &mut StdRng) -> PathingGrid {
-    let mut pathing_grid: PathingGrid = PathingGrid::new(n, n, false);
+fn random_grid<const D: bool>(n: usize, rng: &mut StdRng) -> PathingGrid<D> {
+    let mut pathing_grid: PathingGrid<D>  = PathingGrid::<D>::new(n, n, false);
     for x in 0..pathing_grid.width() {
         for y in 0..pathing_grid.height() {
             pathing_grid.set(x, y, rng.gen_bool(0.4))
@@ -14,20 +14,20 @@ fn random_grid(n: usize, rng: &mut StdRng) -> PathingGrid {
     pathing_grid.generate_components();
     pathing_grid
 }
-fn random_grid_point(grid: &PathingGrid, rng: &mut StdRng) -> Point{
+fn random_grid_point<const D: bool>(grid: &PathingGrid<D>, rng: &mut StdRng) -> Point{
     Point::new(rng.gen_range(0..grid.width()) as i32,rng.gen_range(0..grid.height()) as i32)
 }
 
-fn test(pathing_grid: &PathingGrid, start: Point, end: Point) -> Option<Vec<Point>> {
+fn test<const D: bool>(pathing_grid: &PathingGrid<D>, start: Point, end: Point) -> Option<Vec<Point>> {
     pathing_grid.get_path_single_goal(start, end, false)
 }
 
-fn criterion_benchmark(c: &mut Criterion) {
+fn criterion_benchmark<const D: bool>(c: &mut Criterion) {
     const N: usize = 64;
     const N_GRIDS: usize = 1000;
     const N_PAIRS: usize = 1000;
     let mut rng = StdRng::seed_from_u64(0);
-    let mut random_grids: Vec<PathingGrid> = Vec::new();
+    let mut random_grids: Vec<PathingGrid<D>> = Vec::new();
     for _ in 0..N_GRIDS{
         random_grids.push(random_grid(N, &mut rng))
     }
@@ -55,5 +55,5 @@ fn criterion_benchmark(c: &mut Criterion) {
     }); 
 }
 
-criterion_group!(benches, criterion_benchmark);
+criterion_group!(benches, criterion_benchmark<true>);
 criterion_main!(benches);
