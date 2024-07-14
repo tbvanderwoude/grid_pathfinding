@@ -104,15 +104,10 @@ impl PathingGrid {
     fn is_forced(&self, dir: Direction, node: &Point) -> bool {
         let dir_num = dir.num();
         if dir.diagonal() {
-            !self.indexed_neighbor(node, 3 + dir_num) || !self.indexed_neighbor(node, 5 + dir_num)
+            !(self.indexed_neighbor(node, 3 + dir_num) && self.indexed_neighbor(node, 5 + dir_num))
         } else {
-            if self.allow_diagonal_move {
-                !self.indexed_neighbor(node, 2 + dir_num)
-                    || !self.indexed_neighbor(node, dir_num + 6)
-            } else {
-                !self.indexed_neighbor(node, 3 + dir_num)
-                    || !self.indexed_neighbor(node, dir_num + 5) 
-            }
+            !(self.indexed_neighbor(node, 2 + dir_num)
+                && self.indexed_neighbor(node, dir_num + 6))
         }
     }
     fn explain_bin_neighborhood(nn: u8) {
@@ -158,8 +153,8 @@ impl PathingGrid {
             if DEBUG_PRINT {
                 println!("\tStraight: {dir_num} or {dir:?}");
             }
-            n_mask = 0b00000001 << dir_num;
             if self.allow_diagonal_move {
+                n_mask = 0b00000001 << dir_num;
                 if !self.indexed_neighbor(node, 2 + dir_num) {
                     n_mask |= 1 << ((dir_num + 1) % 8);
                     forced = true;
@@ -169,22 +164,8 @@ impl PathingGrid {
                     forced = true;
                 }
             } else {
-                if !self.indexed_neighbor(node, 3 + dir_num)
-                {
-                    n_mask |= 1 << ((dir_num + 6) % 8);
-                    forced = true;
-                }
-                if !self.indexed_neighbor(node, 5 + dir_num)
-                {
-                    n_mask |= 1 << ((dir_num + 2) % 8);
-                    forced = true;
-                }
-                if !self.indexed_neighbor(node, dir_num)
-                {
-                    n_mask |= 1 << ((dir_num + 6) % 8);
-                    n_mask |= 1 << ((dir_num + 2) % 8);
-                    forced = true;
-                }
+                n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
+                forced = true;
             }
         }
         let comb_mask = neighbours & n_mask;
@@ -209,6 +190,7 @@ impl PathingGrid {
         cost: i32,
         direction: Direction,
         goal: &F,
+        recurse: bool,
     ) -> Option<(Point, i32)>
     where
         F: Fn(&Point) -> bool,
@@ -226,23 +208,24 @@ impl PathingGrid {
         }
 
         if direction.diagonal()
-            && (self.jump(&new_n, 1, direction.x_dir(), goal).is_some()
-                || self.jump(&new_n, 1, direction.y_dir(), goal).is_some())
+            && (self.jump(&new_n, 1, direction.x_dir(), goal, recurse).is_some()
+                || self.jump(&new_n, 1, direction.y_dir(), goal, recurse).is_some())
         {
             return Some((new_n, cost));
         }
-        if !self.allow_diagonal_move && !direction.diagonal() {
-            if !self.can_move_to(new_n + direction) {
-                let perp_1 = direction.rotate_ccw(2);
-                let perp_2 = direction.rotate_cw(2);
-                if self.jump(&new_n, 1, perp_1, goal).is_some()
-                    ||self.jump(&new_n, 1, perp_2, goal).is_some()
-                {
-                    return Some((new_n, cost));
-                }
+        if recurse && !self.allow_diagonal_move && !direction.diagonal() {
+            let perp_1 = direction.rotate_ccw(2);
+            let perp_2 = direction.rotate_cw(2);
+            // 8-grid JPS relies on mostly straight jumping of horizontals
+            // 4-grid JPS requires horizontals to also include the goal check and this can be done by
+            // a special non-recursive routine.
+            if self.jump(&new_n, 1, perp_1, goal, false).is_some()
+                ||self.jump(&new_n, 1, perp_2, goal, false).is_some()
+            {
+                return Some((new_n, cost));
             }
         }
-        self.jump(&new_n, cost + 1, direction, goal)
+        self.jump(&new_n, cost + 1, direction, goal, recurse)
     }
     fn pathfinding_neighborhood(&self, pos: &Point) -> Vec<(Point, i32)> {
         if self.allow_diagonal_move {
@@ -284,7 +267,7 @@ impl PathingGrid {
                 let dir = parent_node.dir_obj(node);
                 for (n, c) in self.pruned_neighborhood(dir, &node).0 {
                     let dir = node.dir_obj(&n);
-                    if let Some((jumped_node, cost)) = self.jump(node, c, dir, goal) {
+                    if let Some((jumped_node, cost)) = self.jump(node, c, dir, goal, true) {
                         let neighbour_dir = node.dir_obj(&jumped_node);
                         // If improved pruning is enabled, expand any diagonal unforced nodes
                         if self.improved_pruning
@@ -720,7 +703,31 @@ mod tests {
             assert!(path.len() == expected);
         }
     }
-
+    #[test]
+    fn test_complex_waypoints() {
+        for (allow_diag, pruning, expected) in
+            [(false, false, 11), (true, false, 7), (true, true, 5)]
+        {
+            let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
+            pathing_grid.set_rectangle(&Rect::new(1,1,2,2), true);
+            pathing_grid.set_rectangle(&Rect::new(5,0,2,2), true);
+            pathing_grid.set_rectangle(&Rect::new(0,5,2,2), true);
+            pathing_grid.set_rectangle(&Rect::new(8,8,2,2), true);
+            visualize_grid(&pathing_grid);
+            // pathing_grid.improved_pruning = false;
+            pathing_grid.allow_diagonal_move = allow_diag;
+            pathing_grid.improved_pruning = pruning;
+            pathing_grid.generate_components();
+            let start = Point::new(0, 0);
+            let end = Point::new(7, 7);
+            let path = pathing_grid
+                .get_waypoints_single_goal(start, end, false)
+                .unwrap();
+            // The shortest path takes 5 steps
+            println!("{}",path.len());
+            assert!(path.len() == expected);
+        }
+    }
 
     #[test]
     fn test_complex_2() {
