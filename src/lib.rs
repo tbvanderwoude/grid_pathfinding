@@ -18,7 +18,7 @@ use crate::astar_jps::astar_jps;
 use core::fmt;
 use std::collections::VecDeque;
 
-const DEBUG_PRINT: bool = true;
+const DEBUG_PRINT: bool = false;
 
 /// Turns waypoints into a path on the grid which can be followed step by step. Due to symmetry this
 /// is typically one of many ways to follow the waypoints.
