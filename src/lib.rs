@@ -307,7 +307,7 @@ impl PathingGrid {
         approximate: bool,
     ) -> Option<Vec<Point>> {
         self.get_waypoints_single_goal(start, goal, approximate)
-            .map(|x| waypoints_to_path(x))
+            .map(waypoints_to_path)
     }
 
     /// Computes a path from the start to one of the given goals and returns the selected goal in addition to the found path. Otherwise behaves similar to [get_path_single_goal](Self::get_path_single_goal).
