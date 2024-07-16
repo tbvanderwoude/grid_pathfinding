@@ -78,9 +78,6 @@ impl PathingGrid {
         } else {
             point.neumann_neighborhood()
         }
-        .into_iter()
-        .filter(|p| self.can_move_to(*p))
-        .collect::<Vec<Point>>()
     }
     /// Use the move distance or manhattan distance depending on whether diagonal moves are allowed.
     pub fn heuristic(&self, p1: &Point, p2: &Point) -> i32 {
@@ -531,10 +528,12 @@ impl Grid<bool> for PathingGrid {
             self.components_dirty = true;
         } else {
             for p in self.get_neighbours(p) {
-                self.components.union(
-                    self.grid.get_ix(x, y),
-                    self.grid.get_ix(p.x as usize, p.y as usize),
-                );
+                if self.can_move_to(p){
+                    self.components.union(
+                        self.grid.get_ix(x, y),
+                        self.grid.get_ix(p.x as usize, p.y as usize),
+                    );
+                }
             }
         }
         self.update_neighbours(p.x, p.y, blocked);
