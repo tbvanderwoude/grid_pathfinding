@@ -285,8 +285,8 @@ impl PathingGrid {
             } else {
                 goal.neumann_neighborhood()
             };
-            !neighborhood.iter().any(|p| {
-                self.in_bounds(p.x, p.y) && self.components.equiv(start_ix, self.get_ix_point(&p))
+            neighborhood.iter().all(|p| {
+                !self.in_bounds(p.x, p.y) || !self.components.equiv(start_ix, self.get_ix_point(&p))
             })
         } else {
             true
