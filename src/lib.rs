@@ -18,14 +18,9 @@ use crate::astar_jps::astar_jps;
 use core::fmt;
 use std::collections::VecDeque;
 
-const DEBUG_PRINT: bool = false;
-
 /// Turns waypoints into a path on the grid which can be followed step by step. Due to symmetry this
 /// is typically one of many ways to follow the waypoints.
 pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
-    if DEBUG_PRINT {
-        println!("Waypoints:\n\t{:?}", &waypoints)
-    }
     let mut waypoint_queue = waypoints.into_iter().collect::<VecDeque<Point>>();
     let mut path: Vec<Point> = Vec::new();
     let mut current = waypoint_queue.pop_front().unwrap();
@@ -36,9 +31,6 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
             current = current + delta;
             path.push(current);
         }
-    }
-    if DEBUG_PRINT {
-        println!("Path:\n\t{:?}", &path)
     }
     path
 }
@@ -125,16 +117,8 @@ impl PathingGrid {
         if !self.allow_diagonal_move {
             neighbours &= 0b01010101;
         }
-        if DEBUG_PRINT {
-            println!("Pruned neighborhood of {node:?} to the {dir:?} of parent.");
-            println!("\tNeighbours: {neighbours:#010b}");
-            PathingGrid::explain_bin_neighborhood(neighbours);
-        }
         if self.allow_diagonal_move {
             if dir.diagonal() {
-                if DEBUG_PRINT {
-                    println!("\tDiagonal: {dir_num} or {dir:?}");
-                }
                 n_mask = 0b11000001_u8.rotate_left(dir_num as u32);
                 if !self.indexed_neighbor(node, 3 + dir_num) {
                     n_mask |= 1 << ((dir_num + 2) % 8);
@@ -155,12 +139,6 @@ impl PathingGrid {
             n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
         }
         let comb_mask = neighbours & n_mask;
-        if DEBUG_PRINT {
-            println!("\tForced neighbour mask: {n_mask:#010b}");
-            PathingGrid::explain_bin_neighborhood(n_mask);
-            println!("\tCombined mask: {comb_mask:#010b}");
-            PathingGrid::explain_bin_neighborhood(comb_mask)
-        };
         (0..8)
             .step_by(if self.allow_diagonal_move { 1 } else { 2 })
             .filter(move |x| comb_mask & (1 << *x) != 0)
@@ -247,9 +225,6 @@ impl PathingGrid {
     {
         match parent {
             Some(parent_node) => {
-                if DEBUG_PRINT {
-                    println!("Point: {:?}; Parent: {:?}", node, parent_node);
-                }
                 let mut succ = vec![];
                 let dir = parent_node.dir_obj(node);
                 for (n, c) in self.pruned_neighborhood(dir, &node) {
@@ -269,28 +244,15 @@ impl PathingGrid {
                             // cost to include the cost from parent_node to jumped_node
                             succ.extend(jump_points.into_iter().map(|(p, c)| (p, c + cost)));
                         } else {
-                            if DEBUG_PRINT {
-                                println!("\tJumped node: {:?}", jumped_node);
-                            }
                             succ.push((jumped_node, cost));
                         }
-                    } else {
-                        if DEBUG_PRINT {
-                            println!("\tNode went nowhere after jumping: {:?}", n);
-                        }
                     }
-                }
-                if DEBUG_PRINT {
-                    println!("\tFinal successors: {:?}", succ);
                 }
                 succ
             }
             None => {
                 // For the starting node, just generate the full normal neighborhood without any pruning or jumping.
                 let pf_neighborhood = self.pathfinding_neighborhood(node);
-                if DEBUG_PRINT {
-                    println!("Initial neighborhood: {:?}", pf_neighborhood);
-                }
                 pf_neighborhood
             }
         }
