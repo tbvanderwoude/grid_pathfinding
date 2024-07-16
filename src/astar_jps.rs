@@ -40,22 +40,20 @@ impl<K: Ord> Ord for SmallestCostHolder<K> {
         }
     }
 }
-#[allow(clippy::needless_collect)]
+
 fn reverse_path<N, V, F>(parents: &IndexMap<N, V>, mut parent: F, start: usize) -> Vec<N>
 where
     N: Eq + Hash + Clone,
     F: FnMut(&V) -> usize,
 {
-    let path = itertools::unfold(start, |i| {
+    let mut path: Vec<N> = itertools::unfold(start, |i| {
         parents.get_index(*i).map(|(node, value)| {
             *i = parent(value);
-            node
+            node.clone()
         })
-    })
-    .collect::<Vec<&N>>();
-    // Collecting the going through the vector is needed to revert the path because the
-    // unfold iterator is not double-ended due to its iterative nature.
-    path.into_iter().rev().cloned().collect()
+    }).collect();
+    path.reverse();
+    path
 }
 
 pub fn astar_jps<N, C, FN, IN, FH, FS>(
@@ -79,7 +77,7 @@ where
         index: 0,
     });
     let mut parents: IndexMap<N, (usize, C)> = IndexMap::new();
-    parents.insert(start.clone(), (usize::max_value(), Zero::zero()));
+    parents.insert(start.clone(), (usize::MAX, Zero::zero()));
     while let Some(SmallestCostHolder { cost, index, .. }) = to_see.pop() {
         let successors = {
             let (node, &(parent_index, c)) = parents.get_index(index).unwrap();
