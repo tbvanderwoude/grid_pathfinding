@@ -23,8 +23,8 @@ const DEBUG_PRINT: bool = false;
 /// Turns waypoints into a path on the grid which can be followed step by step. Due to symmetry this
 /// is typically one of many ways to follow the waypoints.
 pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
-    if DEBUG_PRINT{
-        println!("Waypoints:\n\t{:?}",&waypoints)
+    if DEBUG_PRINT {
+        println!("Waypoints:\n\t{:?}", &waypoints)
     }
     let mut waypoint_queue = waypoints.into_iter().collect::<VecDeque<Point>>();
     let mut path: Vec<Point> = Vec::new();
@@ -37,12 +37,11 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
             path.push(current);
         }
     }
-    if DEBUG_PRINT{
-        println!("Path:\n\t{:?}",&path)
+    if DEBUG_PRINT {
+        println!("Path:\n\t{:?}", &path)
     }
     path
 }
-
 
 /// [PathingGrid] maintains information about components using a [UnionFind] structure in addition to the raw
 /// [bool] grid values in the [BoolGrid] that determine whether a space is occupied ([true]) or
@@ -207,8 +206,12 @@ impl PathingGrid {
         }
 
         if direction.diagonal()
-            && (self.jump(&new_n, 1, direction.x_dir(), goal, recurse).is_some()
-                || self.jump(&new_n, 1, direction.y_dir(), goal, recurse).is_some())
+            && (self
+                .jump(&new_n, 1, direction.x_dir(), goal, recurse)
+                .is_some()
+                || self
+                    .jump(&new_n, 1, direction.y_dir(), goal, recurse)
+                    .is_some())
         {
             return Some((new_n, cost));
         }
@@ -219,7 +222,7 @@ impl PathingGrid {
             // 4-grid JPS requires horizontals to also include the goal check and this can be done by
             // a special non-recursive routine.
             if self.jump(&new_n, 1, perp_1, goal, false).is_some()
-                ||self.jump(&new_n, 1, perp_2, goal, false).is_some()
+                || self.jump(&new_n, 1, perp_2, goal, false).is_some()
             {
                 return Some((new_n, cost));
             }
@@ -286,8 +289,7 @@ impl PathingGrid {
                             }
                             succ.push((jumped_node, cost));
                         }
-                    }
-                    else{
+                    } else {
                         if DEBUG_PRINT {
                             println!("\tNode went nowhere after jumping: {:?}", n);
                         }
@@ -682,10 +684,10 @@ mod tests {
             [(false, false, 15), (true, false, 10), (true, true, 10)]
         {
             let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
-            pathing_grid.set_rectangle(&Rect::new(1,1,2,2), true);
-            pathing_grid.set_rectangle(&Rect::new(5,0,2,2), true);
-            pathing_grid.set_rectangle(&Rect::new(0,5,2,2), true);
-            pathing_grid.set_rectangle(&Rect::new(8,8,2,2), true);
+            pathing_grid.set_rectangle(&Rect::new(1, 1, 2, 2), true);
+            pathing_grid.set_rectangle(&Rect::new(5, 0, 2, 2), true);
+            pathing_grid.set_rectangle(&Rect::new(0, 5, 2, 2), true);
+            pathing_grid.set_rectangle(&Rect::new(8, 8, 2, 2), true);
             visualize_grid(&pathing_grid);
             // pathing_grid.improved_pruning = false;
             pathing_grid.allow_diagonal_move = allow_diag;
@@ -697,7 +699,7 @@ mod tests {
                 .get_path_single_goal(start, end, false)
                 .unwrap();
             // The shortest path takes 5 steps
-            println!("{}",path.len());
+            println!("{}", path.len());
             assert!(path.len() == expected);
         }
     }
@@ -707,10 +709,10 @@ mod tests {
             [(false, false, 11), (true, false, 7), (true, true, 5)]
         {
             let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
-            pathing_grid.set_rectangle(&Rect::new(1,1,2,2), true);
-            pathing_grid.set_rectangle(&Rect::new(5,0,2,2), true);
-            pathing_grid.set_rectangle(&Rect::new(0,5,2,2), true);
-            pathing_grid.set_rectangle(&Rect::new(8,8,2,2), true);
+            pathing_grid.set_rectangle(&Rect::new(1, 1, 2, 2), true);
+            pathing_grid.set_rectangle(&Rect::new(5, 0, 2, 2), true);
+            pathing_grid.set_rectangle(&Rect::new(0, 5, 2, 2), true);
+            pathing_grid.set_rectangle(&Rect::new(8, 8, 2, 2), true);
             visualize_grid(&pathing_grid);
             // pathing_grid.improved_pruning = false;
             pathing_grid.allow_diagonal_move = allow_diag;
@@ -722,7 +724,7 @@ mod tests {
                 .get_waypoints_single_goal(start, end, false)
                 .unwrap();
             // The shortest path takes 5 steps
-            println!("{}",path.len());
+            println!("{}", path.len());
             assert!(path.len() == expected);
         }
     }
@@ -733,9 +735,9 @@ mod tests {
             [(false, false, 19), (true, false, 12), (true, true, 12)]
         {
             let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
-            pathing_grid.set_rectangle(&Rect::new(1,1,2,2), true);
-            pathing_grid.set_rectangle(&Rect::new(5,0,2,2), true);
-            pathing_grid.set_rectangle(&Rect::new(0,5,2,2), true);
+            pathing_grid.set_rectangle(&Rect::new(1, 1, 2, 2), true);
+            pathing_grid.set_rectangle(&Rect::new(5, 0, 2, 2), true);
+            pathing_grid.set_rectangle(&Rect::new(0, 5, 2, 2), true);
             visualize_grid(&pathing_grid);
             // pathing_grid.improved_pruning = false;
             pathing_grid.allow_diagonal_move = allow_diag;
@@ -747,7 +749,7 @@ mod tests {
                 .get_path_single_goal(start, end, false)
                 .unwrap();
             // The shortest path takes 5 steps
-            println!("{}",path.len());
+            println!("{}", path.len());
             assert!(path.len() == expected);
         }
     }
@@ -758,10 +760,10 @@ mod tests {
             [(false, false, 9), (true, false, 6), (true, true, 6)]
         {
             let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
-            pathing_grid.set_rectangle(&Rect::new(1,1,1,1), true);
-            pathing_grid.set_rectangle(&Rect::new(3,0,1,1), true);
-            pathing_grid.set_rectangle(&Rect::new(0,3,1,1), true);
-            pathing_grid.set_rectangle(&Rect::new(2,3,1,1), true);
+            pathing_grid.set_rectangle(&Rect::new(1, 1, 1, 1), true);
+            pathing_grid.set_rectangle(&Rect::new(3, 0, 1, 1), true);
+            pathing_grid.set_rectangle(&Rect::new(0, 3, 1, 1), true);
+            pathing_grid.set_rectangle(&Rect::new(2, 3, 1, 1), true);
             // pathing_grid.set_rectangle(&Rect::new(3,2,1,1), true);
             visualize_grid(&pathing_grid);
             // pathing_grid.improved_pruning = false;
@@ -774,7 +776,7 @@ mod tests {
                 .get_path_single_goal(start, end, false)
                 .unwrap();
             // The shortest path takes 5 steps
-            println!("{}",path.len());
+            println!("{}", path.len());
             assert!(path.len() == expected);
         }
     }
