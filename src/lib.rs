@@ -121,7 +121,7 @@ impl PathingGrid {
         &self,
         dir: Direction,
         node: &'a Point,
-    ) -> (impl Iterator<Item = (Point, i32)> + 'a, bool) {
+    ) -> impl Iterator<Item = (Point, i32)> + 'a {
         let dir_num = dir.num();
         let mut n_mask: u8;
         let mut neighbours = self.neighbours.get_point(*node);
@@ -133,7 +133,6 @@ impl PathingGrid {
             println!("\tNeighbours: {neighbours:#010b}");
             PathingGrid::explain_bin_neighborhood(neighbours);
         }
-        let mut forced = false;
         if dir.diagonal() {
             if DEBUG_PRINT {
                 println!("\tDiagonal: {dir_num} or {dir:?}");
@@ -141,11 +140,9 @@ impl PathingGrid {
             n_mask = 0b11000001_u8.rotate_left(dir_num as u32);
             if !self.indexed_neighbor(node, 3 + dir_num) {
                 n_mask |= 1 << ((dir_num + 2) % 8);
-                forced = true;
             }
             if !self.indexed_neighbor(node, 5 + dir_num) {
                 n_mask |= 1 << ((dir_num + 6) % 8);
-                forced = true;
             }
         } else {
             if DEBUG_PRINT {
@@ -155,15 +152,12 @@ impl PathingGrid {
                 n_mask = 0b00000001 << dir_num;
                 if !self.indexed_neighbor(node, 2 + dir_num) {
                     n_mask |= 1 << ((dir_num + 1) % 8);
-                    forced = true;
                 }
                 if !self.indexed_neighbor(node, 6 + dir_num) {
                     n_mask |= 1 << ((dir_num + 7) % 8);
-                    forced = true;
                 }
             } else {
                 n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
-                forced = true;
             }
         }
         let comb_mask = neighbours & n_mask;
@@ -173,13 +167,10 @@ impl PathingGrid {
             println!("\tCombined mask: {comb_mask:#010b}");
             PathingGrid::explain_bin_neighborhood(comb_mask)
         };
-        (
-            (0..8)
-                .step_by(if self.allow_diagonal_move { 1 } else { 2 })
-                .filter(move |x| comb_mask & (1 << *x) != 0)
-                .map(|d| (node.moore_neighbor(d), 1)),
-            forced,
-        )
+        (0..8)
+            .step_by(if self.allow_diagonal_move { 1 } else { 2 })
+            .filter(move |x| comb_mask & (1 << *x) != 0)
+            .map(|d| (node.moore_neighbor(d), 1))
     }
 
     fn jump<F>(
@@ -267,7 +258,7 @@ impl PathingGrid {
                 }
                 let mut succ = vec![];
                 let dir = parent_node.dir_obj(node);
-                for (n, c) in self.pruned_neighborhood(dir, &node).0 {
+                for (n, c) in self.pruned_neighborhood(dir, &node) {
                     let dir = node.dir_obj(&n);
                     if let Some((jumped_node, cost)) = self.jump(node, c, dir, goal, true) {
                         let neighbour_dir = node.dir_obj(&jumped_node);
