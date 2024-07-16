@@ -104,10 +104,9 @@ impl PathingGrid {
     fn is_forced(&self, dir: Direction, node: &Point) -> bool {
         let dir_num = dir.num();
         if dir.diagonal() {
-            !(self.indexed_neighbor(node, 3 + dir_num) && self.indexed_neighbor(node, 5 + dir_num))
+            !self.indexed_neighbor(node, 3 + dir_num) || !self.indexed_neighbor(node, 5 + dir_num)
         } else {
-            !(self.indexed_neighbor(node, 2 + dir_num)
-                && self.indexed_neighbor(node, dir_num + 6))
+            !self.indexed_neighbor(node, 2 + dir_num) || !self.indexed_neighbor(node, 6 + dir_num)
         }
     }
     fn explain_bin_neighborhood(nn: u8) {
