@@ -130,22 +130,19 @@ impl PathingGrid {
             println!("\tNeighbours: {neighbours:#010b}");
             PathingGrid::explain_bin_neighborhood(neighbours);
         }
-        if dir.diagonal() {
-            if DEBUG_PRINT {
-                println!("\tDiagonal: {dir_num} or {dir:?}");
-            }
-            n_mask = 0b11000001_u8.rotate_left(dir_num as u32);
-            if !self.indexed_neighbor(node, 3 + dir_num) {
-                n_mask |= 1 << ((dir_num + 2) % 8);
-            }
-            if !self.indexed_neighbor(node, 5 + dir_num) {
-                n_mask |= 1 << ((dir_num + 6) % 8);
-            }
-        } else {
-            if DEBUG_PRINT {
-                println!("\tStraight: {dir_num} or {dir:?}");
-            }
-            if self.allow_diagonal_move {
+        if self.allow_diagonal_move {
+            if dir.diagonal() {
+                if DEBUG_PRINT {
+                    println!("\tDiagonal: {dir_num} or {dir:?}");
+                }
+                n_mask = 0b11000001_u8.rotate_left(dir_num as u32);
+                if !self.indexed_neighbor(node, 3 + dir_num) {
+                    n_mask |= 1 << ((dir_num + 2) % 8);
+                }
+                if !self.indexed_neighbor(node, 5 + dir_num) {
+                    n_mask |= 1 << ((dir_num + 6) % 8);
+                }
+            } else {
                 n_mask = 0b00000001 << dir_num;
                 if !self.indexed_neighbor(node, 2 + dir_num) {
                     n_mask |= 1 << ((dir_num + 1) % 8);
@@ -153,9 +150,9 @@ impl PathingGrid {
                 if !self.indexed_neighbor(node, 6 + dir_num) {
                     n_mask |= 1 << ((dir_num + 7) % 8);
                 }
-            } else {
-                n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
             }
+        } else {
+            n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
         }
         let comb_mask = neighbours & n_mask;
         if DEBUG_PRINT {
@@ -528,7 +525,7 @@ impl Grid<bool> for PathingGrid {
             self.components_dirty = true;
         } else {
             for p in self.get_neighbours(p) {
-                if self.can_move_to(p){
+                if self.can_move_to(p) {
                     self.components.union(
                         self.grid.get_ix(x, y),
                         self.grid.get_ix(p.x as usize, p.y as usize),
