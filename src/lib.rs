@@ -271,12 +271,7 @@ impl PathingGrid {
         if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
             let start_ix = self.get_ix_point(start);
             let goal_ix = self.get_ix_point(goal);
-            if self.components.equiv(start_ix, goal_ix) {
-                false
-            } else {
-                // start_ix and goal_ix are not equivalent components
-                true
-            }
+            !self.components.equiv(start_ix, goal_ix)
         } else {
             true
         }
