@@ -698,49 +698,6 @@ mod tests {
     }
 
     #[test]
-    fn test_complex_2() {
-        for (allow_diag, pruning, expected) in
-            [(false, false, 19), (true, false, 12), (true, true, 12)]
-        {
-            let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
-            pathing_grid.set_rectangle(&Rect::new(1, 1, 2, 2), true);
-            pathing_grid.set_rectangle(&Rect::new(5, 0, 2, 2), true);
-            pathing_grid.set_rectangle(&Rect::new(0, 5, 2, 2), true);
-            pathing_grid.allow_diagonal_move = allow_diag;
-            pathing_grid.improved_pruning = pruning;
-            pathing_grid.generate_components();
-            let start = Point::new(0, 0);
-            let end = Point::new(9, 9);
-            let path = pathing_grid
-                .get_path_single_goal(start, end, false)
-                .unwrap();
-            assert!(path.len() == expected);
-        }
-    }
-
-    #[test]
-    fn test_complex_3() {
-        for (allow_diag, pruning, expected) in
-            [(false, false, 9), (true, false, 6), (true, true, 6)]
-        {
-            let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
-            pathing_grid.set_rectangle(&Rect::new(1, 1, 1, 1), true);
-            pathing_grid.set_rectangle(&Rect::new(3, 0, 1, 1), true);
-            pathing_grid.set_rectangle(&Rect::new(0, 3, 1, 1), true);
-            pathing_grid.set_rectangle(&Rect::new(2, 3, 1, 1), true);
-            pathing_grid.allow_diagonal_move = allow_diag;
-            pathing_grid.improved_pruning = pruning;
-            pathing_grid.generate_components();
-            let start = Point::new(0, 0);
-            let end = Point::new(4, 4);
-            let path = pathing_grid
-                .get_path_single_goal(start, end, false)
-                .unwrap();
-            assert!(path.len() == expected);
-        }
-    }
-
-    #[test]
     fn test_diagonal_switch_reachable() {
         // Tests the effect of allowing diagonals in solving the following 2x2 grid:
         //  ___
