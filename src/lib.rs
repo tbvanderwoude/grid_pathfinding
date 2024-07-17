@@ -76,12 +76,20 @@ impl Default for PathingGrid {
     }
 }
 impl PathingGrid {
-    fn get_neighbours(&self, point: Point) -> Vec<Point> {
+    fn neighborhood_points(&self, point: &Point) -> Vec<Point> {
         if self.allow_diagonal_move {
             point.moore_neighborhood()
         } else {
             point.neumann_neighborhood()
         }
+    }
+    fn neighborhood_points_and_cost(&self, pos: &Point) -> Vec<(Point, i32)> {
+        self.neighborhood_points(pos)
+        .into_iter()
+        .filter(|p| self.can_move_to(*p))
+        // See comment in pruned_neighborhood about cost calculation
+        .map(move |p| (p, (pos.dir_obj(&p).num() % 2) * (D - C) + C))
+        .collect::<Vec<_>>()
     }
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
     pub fn heuristic(&self, p1: &Point, p2: &Point) -> i32 {
@@ -217,18 +225,6 @@ impl PathingGrid {
             recurse,
         )
     }
-    fn pathfinding_neighborhood(&self, pos: &Point) -> Vec<(Point, i32)> {
-        if self.allow_diagonal_move {
-            pos.moore_neighborhood()
-        } else {
-            pos.neumann_neighborhood()
-        }
-        .into_iter()
-        .filter(|p| self.can_move_to(*p))
-        // See comment in pruned_neighborhood about cost calculation
-        .map(move |p| (p, (pos.dir_obj(&p).num() % 2) * (D - C) + C))
-        .collect::<Vec<_>>()
-    }
     fn update_neighbours(&mut self, x: i32, y: i32, blocked: bool) {
         let p = Point::new(x, y);
         for i in 0..8 {
@@ -278,8 +274,7 @@ impl PathingGrid {
             }
             None => {
                 // For the starting node, just generate the full normal neighborhood without any pruning or jumping.
-                let pf_neighborhood = self.pathfinding_neighborhood(node);
-                pf_neighborhood
+                self.neighborhood_points_and_cost(node)
             }
         }
     }
@@ -512,7 +507,7 @@ impl Grid<bool> for PathingGrid {
         if self.grid.get(x, y) != blocked && blocked {
             self.components_dirty = true;
         } else {
-            for p in self.get_neighbours(p) {
+            for p in self.neighborhood_points(&p) {
                 if self.can_move_to(p) {
                     self.components.union(
                         self.grid.get_ix(x, y),
@@ -621,7 +616,6 @@ mod tests {
             [(false, false, 5), (true, false, 4), (true, true, 4)]
         {
             let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
-            // pathing_grid.improved_pruning = false;
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
             pathing_grid.set(1, 1, true);
@@ -712,7 +706,6 @@ mod tests {
             pathing_grid.set_rectangle(&Rect::new(1, 1, 2, 2), true);
             pathing_grid.set_rectangle(&Rect::new(5, 0, 2, 2), true);
             pathing_grid.set_rectangle(&Rect::new(0, 5, 2, 2), true);
-            // pathing_grid.improved_pruning = false;
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
             pathing_grid.generate_components();
@@ -721,7 +714,6 @@ mod tests {
             let path = pathing_grid
                 .get_path_single_goal(start, end, false)
                 .unwrap();
-            // The shortest path takes 5 steps
             assert!(path.len() == expected);
         }
     }
@@ -736,8 +728,6 @@ mod tests {
             pathing_grid.set_rectangle(&Rect::new(3, 0, 1, 1), true);
             pathing_grid.set_rectangle(&Rect::new(0, 3, 1, 1), true);
             pathing_grid.set_rectangle(&Rect::new(2, 3, 1, 1), true);
-            // pathing_grid.set_rectangle(&Rect::new(3,2,1,1), true);
-            // pathing_grid.improved_pruning = false;
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
             pathing_grid.generate_components();
@@ -746,7 +736,6 @@ mod tests {
             let path = pathing_grid
                 .get_path_single_goal(start, end, false)
                 .unwrap();
-            // The shortest path takes 5 steps
             assert!(path.len() == expected);
         }
     }
