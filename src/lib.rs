@@ -119,10 +119,11 @@ impl PathingGrid {
         let mut neighbours = self.neighbours.get_point(*node);
         if !self.allow_diagonal_move {
             neighbours &= 0b01010101;
+            n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
         }
-        if self.allow_diagonal_move {
+        else {
             if dir.diagonal() {
-                n_mask = 0b11000001_u8.rotate_left(dir_num as u32);
+                n_mask = 0b10000011_u8.rotate_left(dir_num as u32);
                 if !self.indexed_neighbor(node, 3 + dir_num) {
                     n_mask |= 1 << ((dir_num + 2) % 8);
                 }
@@ -138,8 +139,6 @@ impl PathingGrid {
                     n_mask |= 1 << ((dir_num + 7) % 8);
                 }
             }
-        } else {
-            n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
         }
         let comb_mask = neighbours & n_mask;
         (0..8)
