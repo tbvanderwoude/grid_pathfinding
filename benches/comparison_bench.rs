@@ -27,8 +27,8 @@ fn test(pathing_grid: &PathingGrid, start: Point, end: Point) -> Option<Vec<Poin
 
 fn criterion_benchmark(c: &mut Criterion) {
     const N: usize = 64;
-    const N_GRIDS: usize = 100;
-    const N_PAIRS: usize = 100;
+    const N_GRIDS: usize = 1000;
+    const N_PAIRS: usize = 1000;
     let mut rng = StdRng::seed_from_u64(0);
     let mut random_grids: Vec<PathingGrid> = Vec::new();
     for _ in 0..N_GRIDS {
@@ -37,7 +37,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     let start = Point::new(0, 0);
     let end = Point::new(N as i32 - 1, N as i32 - 1);
-    c.bench_function("100 random 64x64 grids", |b| {
+    c.bench_function("1000 random 64x64 grids", |b| {
         b.iter(|| {
             for grid in &random_grids {
                 test(grid, start, end);
@@ -52,7 +52,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             random_grid_point(&grid, &mut rng),
         ))
     }
-    c.bench_function("100 random start goal pairs on a 64x64 grid", |b| {
+    c.bench_function("1000 random start goal pairs on a 64x64 grid", |b| {
         b.iter(|| {
             for (start, end) in &random_pairs {
                 test(&grid, start.clone(), end.clone());
