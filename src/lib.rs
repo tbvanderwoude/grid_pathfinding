@@ -12,7 +12,7 @@ mod astar_jps;
 #[cfg(test)]
 mod fuzz_test;
 
-use grid_util::direction::{self, Direction};
+use grid_util::direction::Direction;
 use grid_util::grid::{BoolGrid, Grid, SimpleGrid};
 use grid_util::point::Point;
 use petgraph::unionfind::UnionFind;
@@ -315,9 +315,8 @@ impl PathingGrid {
     }
     /// Computes a path from start to goal using JPS. If approximate is [true], then it will
     /// path to one of the neighbours of the goal, which is useful if the goal itself is
-    /// blocked. Diagonal moves cost D, cardinal moves cost C. If diagonals are allowed, the heuristic used computes the path cost
-    /// of taking the maximal number of diagonal moves before continuing straight. When `C=D`, this is equivalent
-    /// to the move or Chebyshev distance. If diagonals are not allowed, the [Manhattan distance](https://en.wikipedia.org/wiki/Taxicab_geometry)
+    /// blocked. If diagonals are allowed, the heuristic used computes the path cost
+    /// of taking the maximal number of diagonal moves before continuing straight. If diagonals are not allowed, the [Manhattan distance](https://en.wikipedia.org/wiki/Taxicab_geometry)
     /// is used instead (see [heuristic](Self::heuristic)). This can be
     /// specified by setting [allow_diagonal_move](Self::allow_diagonal_move).
     /// The heuristic will be scaled by [heuristic_factor](Self::heuristic_factor) which can be used to trade optimality for faster solving for many practical problems, a technique
