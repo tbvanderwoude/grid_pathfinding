@@ -570,6 +570,25 @@ mod tests {
         assert!(pathing_grid.reachable(&start, &end));
     }
 
+    /// Asserts that the case in which start and goal are equal is handled correctly.
+    #[test]
+    fn equal_start_goal() {
+        for (allow_diag, pruning) in
+            [(false, false), (true, false), (true, true)]
+        {
+            let mut pathing_grid: PathingGrid = PathingGrid::new(1, 1, false);
+            pathing_grid.allow_diagonal_move = allow_diag;
+            pathing_grid.improved_pruning = pruning;
+            pathing_grid.generate_components();
+            let start = Point::new(0, 0);
+            let path = pathing_grid
+                .get_path_single_goal(start, start, false)
+                .unwrap();
+            assert!(path.len() == 1);
+        }
+    }
+
+        
     /// Asserts that the optimal 4 step solution is found. Does not allow diagonals.
     #[test]
     fn solve_simple_problem() {
