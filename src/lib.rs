@@ -187,29 +187,26 @@ impl PathingGrid {
             return None;
         }
 
-        if goal(&new_n) {
-            return Some((new_n, cost));
-        }
-        if self.is_forced(direction, &new_n) {
+        if goal(&new_n) || self.is_forced(direction, &new_n) {
             return Some((new_n, cost));
         }
 
         if direction.diagonal()
             && (self
-                .jump(&new_n, 1, direction.x_dir(), goal, recurse)
+                .jump(&new_n, 1, direction.x_dir(), goal, false)
                 .is_some()
                 || self
-                    .jump(&new_n, 1, direction.y_dir(), goal, recurse)
+                    .jump(&new_n, 1, direction.y_dir(), goal, false)
                     .is_some())
         {
             return Some((new_n, cost));
         }
-        if recurse && !self.allow_diagonal_move {
+        // When using a 4-neighborhood (specified by setting allow_diagonal_move to false),
+        // jumps perpendicular to the direction are performed. This is necessary to not miss the
+        // goal when passing by. 
+        if recurse {
             let perp_1 = direction.rotate_ccw(2);
             let perp_2 = direction.rotate_cw(2);
-            // 8-grid JPS relies on mostly straight jumping of horizontals
-            // 4-grid JPS requires horizontals to also include the goal check and this can be done by
-            // a special non-recursive routine.
             if self.jump(&new_n, 1, perp_1, goal, false).is_some()
                 || self.jump(&new_n, 1, perp_2, goal, false).is_some()
             {
@@ -252,7 +249,7 @@ impl PathingGrid {
                 for (n, c) in self.pruned_neighborhood(dir, &node) {
                     let dir = node.dir_obj(&n);
                     // Jumps the neighbor, skipping over unnecessary nodes.
-                    if let Some((jumped_node, cost)) = self.jump(node, c, dir, goal, true) {
+                    if let Some((jumped_node, cost)) = self.jump(node, c, dir, goal, !self.allow_diagonal_move) {
                         // If improved pruning is enabled, expand any diagonal unforced nodes
                         if self.improved_pruning
                             && dir.diagonal()
