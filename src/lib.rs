@@ -231,13 +231,13 @@ impl PathingGrid {
                 let dir = parent_node.dir_obj(node);
                 for (n, c) in self.pruned_neighborhood(dir, &node) {
                     let dir = node.dir_obj(&n);
+                    // Jumps the neighbor, skipping over unnecessary nodes.
                     if let Some((jumped_node, cost)) = self.jump(node, c, dir, goal, true) {
-                        let neighbour_dir = node.dir_obj(&jumped_node);
                         // If improved pruning is enabled, expand any diagonal unforced nodes
                         if self.improved_pruning
                             && dir.diagonal()
                             && !goal(&jumped_node)
-                            && !self.is_forced(neighbour_dir, &jumped_node)
+                            && !self.is_forced(dir, &jumped_node)
                         {
                             // Recursively expand the unforced diagonal node
                             let jump_points =
