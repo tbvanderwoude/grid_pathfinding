@@ -12,9 +12,12 @@ use grid_util::point::Point;
 // - # marks an obstacle
 // - S marks the start
 // - E marks the end
+// 
+// Nodes have a 4-neighborhood
 
 fn main() {
     let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
+    pathing_grid.allow_diagonal_move = false;
     pathing_grid.set(1, 1, true);
     pathing_grid.generate_components();
     println!("{}", pathing_grid);
