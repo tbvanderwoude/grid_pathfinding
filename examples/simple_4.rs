@@ -12,7 +12,7 @@ use grid_util::point::Point;
 // - # marks an obstacle
 // - S marks the start
 // - E marks the end
-// 
+//
 // Nodes have a 4-neighborhood
 
 fn main() {

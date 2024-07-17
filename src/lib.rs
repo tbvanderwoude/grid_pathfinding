@@ -12,7 +12,7 @@ mod astar_jps;
 #[cfg(test)]
 mod fuzz_test;
 
-use grid_util::direction::Direction;
+use grid_util::direction::{self, Direction};
 use grid_util::grid::{BoolGrid, Grid, SimpleGrid};
 use grid_util::point::Point;
 use petgraph::unionfind::UnionFind;
@@ -20,6 +20,15 @@ use petgraph::unionfind::UnionFind;
 use crate::astar_jps::astar_jps;
 use core::fmt;
 use std::collections::VecDeque;
+
+const EQUAL_EDGE_COST: bool = true;
+
+// Costs for diagonal and cardinal moves.
+// Values for unequal costs approximating a ratio D/C of sqrt(2) are from
+// https://github.com/riscy/a_star_on_grids
+const D: i32 = if EQUAL_EDGE_COST { 1 } else { 99 };
+const C: i32 = if EQUAL_EDGE_COST { 1 } else { 70 };
+const E: i32 = 2 * C - D;
 
 /// Turns waypoints into a path on the grid which can be followed step by step. Due to symmetry this
 /// is typically one of many ways to follow the waypoints.
@@ -74,12 +83,17 @@ impl PathingGrid {
             point.neumann_neighborhood()
         }
     }
-    /// Use the move distance or manhattan distance depending on whether diagonal moves are allowed.
+    /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
     pub fn heuristic(&self, p1: &Point, p2: &Point) -> i32 {
         if self.allow_diagonal_move {
-            p1.move_distance(p2)
+            let delta_x = (p1.x - p2.x).abs();
+            let delta_y = (p1.y - p2.y).abs();
+            // Formula from https://github.com/riscy/a_star_on_grids
+            // to efficiently compute the cost of a path taking the maximal amount
+            // of diagonal steps before going straight
+            (E * (delta_x - delta_y).abs() + D * (delta_x + delta_y)) / 2
         } else {
-            p1.manhattan_distance(p2)
+            p1.manhattan_distance(p2) * C
         }
     }
     fn can_move_to(&self, pos: Point) -> bool {
@@ -120,8 +134,7 @@ impl PathingGrid {
         if !self.allow_diagonal_move {
             neighbours &= 0b01010101;
             n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
-        }
-        else {
+        } else {
             if dir.diagonal() {
                 n_mask = 0b10000011_u8.rotate_left(dir_num as u32);
                 if !self.indexed_neighbor(node, 3 + dir_num) {
@@ -144,7 +157,10 @@ impl PathingGrid {
         (0..8)
             .step_by(if self.allow_diagonal_move { 1 } else { 2 })
             .filter(move |x| comb_mask & (1 << *x) != 0)
-            .map(|d| (node.moore_neighbor(d), 1))
+            // (dir_num % 2) * (D-C) + C)
+            // is an optimized version without a conditional of
+            // if dir.diagonal() {D} else {C}
+            .map(move |d| (node.moore_neighbor(d), (dir_num % 2) * (D - C) + C))
     }
 
     fn jump<F>(
@@ -192,7 +208,14 @@ impl PathingGrid {
                 return Some((new_n, cost));
             }
         }
-        self.jump(&new_n, cost + 1, direction, goal, recurse)
+        // See comment in pruned_neighborhood about cost calculation
+        self.jump(
+            &new_n,
+            cost + (direction.num() % 2) * (D - C) + C,
+            direction,
+            goal,
+            recurse,
+        )
     }
     fn pathfinding_neighborhood(&self, pos: &Point) -> Vec<(Point, i32)> {
         if self.allow_diagonal_move {
@@ -202,7 +225,8 @@ impl PathingGrid {
         }
         .into_iter()
         .filter(|p| self.can_move_to(*p))
-        .map(|p| (p, 1))
+        // See comment in pruned_neighborhood about cost calculation
+        .map(move |p| (p, (pos.dir_obj(&p).num() % 2) * (D - C) + C))
         .collect::<Vec<_>>()
     }
     fn update_neighbours(&mut self, x: i32, y: i32, blocked: bool) {
@@ -240,8 +264,7 @@ impl PathingGrid {
                             && !self.is_forced(dir, &jumped_node)
                         {
                             // Recursively expand the unforced diagonal node
-                            let jump_points =
-                                self.jps_neighbours(Some(parent_node), &jumped_node, goal);
+                            let jump_points = self.jps_neighbours(parent, &jumped_node, goal);
 
                             // Extend the successors with the neighbours of the unforced node, correcting the
                             // cost to include the cost from parent_node to jumped_node
@@ -297,10 +320,13 @@ impl PathingGrid {
     }
     /// Computes a path from start to goal using JPS. If approximate is [true], then it will
     /// path to one of the neighbours of the goal, which is useful if the goal itself is
-    /// blocked. The heuristic used is the [move (Chebyshev) distance](https://en.wikipedia.org/wiki/Chebyshev_distance) or
-    /// [Manhattan distance](https://en.wikipedia.org/wiki/Taxicab_geometry) depending on whether diagonal moves are allowed (see [heuristic](Self::heuristic)). This can be
+    /// blocked. Diagonal moves cost D, cardinal moves cost C. If diagonals are allowed, the heuristic used computes the path cost
+    /// of taking the maximal number of diagonal moves before continuing straight. When `C=D`, this is equivalent
+    /// to the move or Chebyshev distance. If diagonals are not allowed, the [Manhattan distance](https://en.wikipedia.org/wiki/Taxicab_geometry)
+    /// is used instead (see [heuristic](Self::heuristic)). This can be
     /// specified by setting [allow_diagonal_move](Self::allow_diagonal_move).
-    /// The heuristic will be scaled by [heuristic_factor](Self::heuristic_factor) which can be used to trade optimality for faster solving for many practical problems. In pathfinding language, a factor greater than
+    /// The heuristic will be scaled by [heuristic_factor](Self::heuristic_factor) which can be used to trade optimality for faster solving for many practical problems, a technique
+    /// called Weighted A*. In pathfinding language, a factor greater than
     /// 1.0 will make the heuristic [inadmissible](https://en.wikipedia.org/wiki/Admissible_heuristic), a requirement for solution optimality. By default,
     /// the [heuristic_factor](Self::heuristic_factor) is 1.0 which gives optimal solutions.
     pub fn get_path_single_goal(
@@ -356,6 +382,7 @@ impl PathingGrid {
         approximate: bool,
     ) -> Option<Vec<Point>> {
         if approximate {
+            // Check if start and one of the goal neighbours are on the same connected component.
             if self.neighbours_unreachable(&start, &goal) {
                 // No neigbhours of the goal are reachable from the start
                 return None;
@@ -372,6 +399,7 @@ impl PathingGrid {
                 |point| self.heuristic(point, &goal) <= 1,
             )
         } else {
+            // Check if start and goal are on the same connected component.
             if self.unreachable(&start, &goal) {
                 return None;
             }
@@ -573,9 +601,7 @@ mod tests {
     /// Asserts that the case in which start and goal are equal is handled correctly.
     #[test]
     fn equal_start_goal() {
-        for (allow_diag, pruning) in
-            [(false, false), (true, false), (true, true)]
-        {
+        for (allow_diag, pruning) in [(false, false), (true, false), (true, true)] {
             let mut pathing_grid: PathingGrid = PathingGrid::new(1, 1, false);
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
@@ -588,7 +614,6 @@ mod tests {
         }
     }
 
-        
     /// Asserts that the optimal 4 step solution is found. Does not allow diagonals.
     #[test]
     fn solve_simple_problem() {

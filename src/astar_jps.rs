@@ -51,7 +51,8 @@ where
             *i = parent(value);
             node.clone()
         })
-    }).collect();
+    })
+    .collect();
     path.reverse();
     path
 }
@@ -92,7 +93,7 @@ where
                 continue;
             }
             let optional_parent_node = parents.get_index(parent_index).map(|x| x.0);
-            
+
             successors(&optional_parent_node, node)
         };
         for (successor, move_cost) in successors {

@@ -25,14 +25,12 @@ fn visualize_grid(grid: &PathingGrid, start: &Point, end: &Point) {
     let grid = &grid.grid;
     for y in (0..grid.height).rev() {
         for x in 0..grid.width {
-            let p = Point::new(x as i32,y as i32);
-            if *start == p{
+            let p = Point::new(x as i32, y as i32);
+            if *start == p {
                 print!("S");
-            }
-            else if *end == p{
+            } else if *end == p {
                 print!("G");
-            } 
-            else if grid.get(x, y) {
+            } else if grid.get(x, y) {
                 print!("#");
             } else {
                 print!(".");
@@ -48,24 +46,23 @@ fn fuzz() {
     const N_GRIDS: usize = 10000;
     const N_PAIRS: usize = 100;
     let mut rng = StdRng::seed_from_u64(0);
-    for (diagonal, improved_pruning) in [(false, false), (true,false), (true,true)]{
+    for (diagonal, improved_pruning) in [(false, false), (true, false), (true, true)] {
         let mut random_grids: Vec<PathingGrid> = Vec::new();
         for _ in 0..N_GRIDS {
             random_grids.push(random_grid(N, &mut rng, diagonal, improved_pruning))
         }
-    
+
         let start = Point::new(0, 0);
         let end = Point::new(N as i32 - 1, N as i32 - 1);
-        for mut random_grid in random_grids{
+        for mut random_grid in random_grids {
             random_grid.set_point(start, false);
             random_grid.set_point(end, false);
             let reachable = random_grid.reachable(&start, &end);
             let path = random_grid.get_path_single_goal(start, end, false);
-            if path.is_some() != reachable{
-                visualize_grid(&random_grid,&start,&end);
+            if path.is_some() != reachable {
+                visualize_grid(&random_grid, &start, &end);
             }
             assert!(path.is_some() == reachable);
         }
     }
- 
 }
