@@ -9,6 +9,9 @@
 //! to avoid flood-filling behaviour if no path exists.
 mod astar_jps;
 
+#[cfg(test)]
+mod fuzz_test;
+
 use grid_util::direction::Direction;
 use grid_util::grid::{BoolGrid, Grid, SimpleGrid};
 use grid_util::point::Point;
