@@ -1,3 +1,6 @@
+/// Fuzzes pathfinding system by checking for many random grids that a path is always found if the goal is reachable
+/// by being part of the same connected component. All system settings (diagonals, improved pruning) are tested.
+
 use super::*;
 use rand::prelude::*;
 
@@ -44,7 +47,6 @@ fn visualize_grid(grid: &PathingGrid, start: &Point, end: &Point) {
 fn fuzz() {
     const N: usize = 10;
     const N_GRIDS: usize = 10000;
-    const N_PAIRS: usize = 100;
     let mut rng = StdRng::seed_from_u64(0);
     for (diagonal, improved_pruning) in [(false, false), (true, false), (true, true)] {
         let mut random_grids: Vec<PathingGrid> = Vec::new();
@@ -59,6 +61,7 @@ fn fuzz() {
             random_grid.set_point(end, false);
             let reachable = random_grid.reachable(&start, &end);
             let path = random_grid.get_path_single_goal(start, end, false);
+            // Show the grid if a path is not found
             if path.is_some() != reachable {
                 visualize_grid(&random_grid, &start, &end);
             }
