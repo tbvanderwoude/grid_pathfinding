@@ -180,7 +180,7 @@ impl PathingGrid {
         {
             return Some((new_n, cost));
         }
-        if recurse && !self.allow_diagonal_move && !direction.diagonal() {
+        if recurse && !self.allow_diagonal_move {
             let perp_1 = direction.rotate_ccw(2);
             let perp_2 = direction.rotate_cw(2);
             // 8-grid JPS relies on mostly straight jumping of horizontals
@@ -236,6 +236,7 @@ impl PathingGrid {
                         // If improved pruning is enabled, expand any diagonal unforced nodes
                         if self.improved_pruning
                             && dir.diagonal()
+                            && !goal(&jumped_node)
                             && !self.is_forced(neighbour_dir, &jumped_node)
                         {
                             // Recursively expand the unforced diagonal node
