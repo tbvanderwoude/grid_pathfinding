@@ -509,19 +509,7 @@ mod tests {
     use grid_util::Rect;
 
     use super::*;
-    fn visualize_grid(grid: &PathingGrid) {
-        let grid = &grid.grid;
-        for y in (0..grid.height).rev() {
-            for x in 0..grid.width {
-                if grid.get(x, y) {
-                    print!("#");
-                } else {
-                    print!(".");
-                }
-            }
-            println!();
-        }
-    }
+
     /// Tests whether points are correctly mapped to different connected components
     #[test]
     fn test_component_generation() {
@@ -620,7 +608,6 @@ mod tests {
             let goals = vec![&goal_1, &goal_2];
             let (selected_goal, path) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
             assert_eq!(selected_goal, Point::new(3, 3));
-            println!("{}", path.len());
             assert!(path.len() == expected);
         }
     }
@@ -635,7 +622,6 @@ mod tests {
             pathing_grid.set_rectangle(&Rect::new(5, 0, 2, 2), true);
             pathing_grid.set_rectangle(&Rect::new(0, 5, 2, 2), true);
             pathing_grid.set_rectangle(&Rect::new(8, 8, 2, 2), true);
-            visualize_grid(&pathing_grid);
             // pathing_grid.improved_pruning = false;
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
@@ -646,7 +632,6 @@ mod tests {
                 .get_path_single_goal(start, end, false)
                 .unwrap();
             // The shortest path takes 5 steps
-            println!("{}", path.len());
             assert!(path.len() == expected);
         }
     }
@@ -660,7 +645,6 @@ mod tests {
             pathing_grid.set_rectangle(&Rect::new(5, 0, 2, 2), true);
             pathing_grid.set_rectangle(&Rect::new(0, 5, 2, 2), true);
             pathing_grid.set_rectangle(&Rect::new(8, 8, 2, 2), true);
-            visualize_grid(&pathing_grid);
             // pathing_grid.improved_pruning = false;
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
@@ -671,7 +655,6 @@ mod tests {
                 .get_waypoints_single_goal(start, end, false)
                 .unwrap();
             // The shortest path takes 5 steps
-            println!("{}", path.len());
             assert!(path.len() == expected);
         }
     }
@@ -685,7 +668,6 @@ mod tests {
             pathing_grid.set_rectangle(&Rect::new(1, 1, 2, 2), true);
             pathing_grid.set_rectangle(&Rect::new(5, 0, 2, 2), true);
             pathing_grid.set_rectangle(&Rect::new(0, 5, 2, 2), true);
-            visualize_grid(&pathing_grid);
             // pathing_grid.improved_pruning = false;
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
@@ -696,7 +678,6 @@ mod tests {
                 .get_path_single_goal(start, end, false)
                 .unwrap();
             // The shortest path takes 5 steps
-            println!("{}", path.len());
             assert!(path.len() == expected);
         }
     }
@@ -712,7 +693,6 @@ mod tests {
             pathing_grid.set_rectangle(&Rect::new(0, 3, 1, 1), true);
             pathing_grid.set_rectangle(&Rect::new(2, 3, 1, 1), true);
             // pathing_grid.set_rectangle(&Rect::new(3,2,1,1), true);
-            visualize_grid(&pathing_grid);
             // pathing_grid.improved_pruning = false;
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
@@ -723,7 +703,6 @@ mod tests {
                 .get_path_single_goal(start, end, false)
                 .unwrap();
             // The shortest path takes 5 steps
-            println!("{}", path.len());
             assert!(path.len() == expected);
         }
     }
