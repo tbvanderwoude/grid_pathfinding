@@ -17,13 +17,6 @@ fn random_grid(n: usize, rng: &mut StdRng, diagonal: bool, improved_pruning: boo
     pathing_grid
 }
 
-fn random_grid_point(grid: &PathingGrid, rng: &mut StdRng) -> Point {
-    Point::new(
-        rng.gen_range(0..grid.width()) as i32,
-        rng.gen_range(0..grid.height()) as i32,
-    )
-}
-
 fn visualize_grid(grid: &PathingGrid, start: &Point, end: &Point) {
     let grid = &grid.grid;
     for y in (0..grid.height).rev() {

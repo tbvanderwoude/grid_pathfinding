@@ -30,6 +30,17 @@ const D: i32 = if EQUAL_EDGE_COST { 1 } else { 99 };
 const C: i32 = if EQUAL_EDGE_COST { 1 } else { 70 };
 const E: i32 = 2 * C - D;
 
+/// Helper function for debugging binary representations of neighborhoods.
+pub fn explain_bin_neighborhood(nn: u8) {
+    for i in 0..8_i32 {
+        let x = nn & (1 << i) != 0;
+        let dir = Direction::try_from(i.rem_euclid(8)).unwrap();
+        if x {
+            println!("\t\t {dir:?}");
+        }
+    }
+}
+
 /// Turns waypoints into a path on the grid which can be followed step by step. Due to symmetry this
 /// is typically one of many ways to follow the waypoints.
 pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
@@ -122,15 +133,7 @@ impl PathingGrid {
             !self.indexed_neighbor(node, 2 + dir_num) || !self.indexed_neighbor(node, 6 + dir_num)
         }
     }
-    fn explain_bin_neighborhood(nn: u8) {
-        for i in 0..8_i32 {
-            let x = nn & (1 << i) != 0;
-            let dir = Direction::try_from(i.rem_euclid(8)).unwrap();
-            if x {
-                println!("\t\t {dir:?}");
-            }
-        }
-    }
+
     fn pruned_neighborhood<'a>(
         &self,
         dir: Direction,
@@ -142,23 +145,21 @@ impl PathingGrid {
         if !self.allow_diagonal_move {
             neighbours &= 0b01010101;
             n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
+        } else if dir.diagonal() {
+            n_mask = 0b10000011_u8.rotate_left(dir_num as u32);
+            if !self.indexed_neighbor(node, 3 + dir_num) {
+                n_mask |= 1 << ((dir_num + 2) % 8);
+            }
+            if !self.indexed_neighbor(node, 5 + dir_num) {
+                n_mask |= 1 << ((dir_num + 6) % 8);
+            }
         } else {
-            if dir.diagonal() {
-                n_mask = 0b10000011_u8.rotate_left(dir_num as u32);
-                if !self.indexed_neighbor(node, 3 + dir_num) {
-                    n_mask |= 1 << ((dir_num + 2) % 8);
-                }
-                if !self.indexed_neighbor(node, 5 + dir_num) {
-                    n_mask |= 1 << ((dir_num + 6) % 8);
-                }
-            } else {
-                n_mask = 0b00000001 << dir_num;
-                if !self.indexed_neighbor(node, 2 + dir_num) {
-                    n_mask |= 1 << ((dir_num + 1) % 8);
-                }
-                if !self.indexed_neighbor(node, 6 + dir_num) {
-                    n_mask |= 1 << ((dir_num + 7) % 8);
-                }
+            n_mask = 0b00000001 << dir_num;
+            if !self.indexed_neighbor(node, 2 + dir_num) {
+                n_mask |= 1 << ((dir_num + 1) % 8);
+            }
+            if !self.indexed_neighbor(node, 6 + dir_num) {
+                n_mask |= 1 << ((dir_num + 7) % 8);
             }
         }
         let comb_mask = neighbours & n_mask;
@@ -246,7 +247,7 @@ impl PathingGrid {
             Some(parent_node) => {
                 let mut succ = vec![];
                 let dir = parent_node.dir_obj(node);
-                for (n, c) in self.pruned_neighborhood(dir, &node) {
+                for (n, c) in self.pruned_neighborhood(dir, node) {
                     let dir = node.dir_obj(&n);
                     // Jumps the neighbor, skipping over unnecessary nodes.
                     if let Some((jumped_node, cost)) = self.jump(node, c, dir, goal, !self.allow_diagonal_move) {
@@ -304,7 +305,7 @@ impl PathingGrid {
                 goal.neumann_neighborhood()
             };
             neighborhood.iter().all(|p| {
-                !self.in_bounds(p.x, p.y) || !self.components.equiv(start_ix, self.get_ix_point(&p))
+                !self.in_bounds(p.x, p.y) || !self.components.equiv(start_ix, self.get_ix_point(p))
             })
         } else {
             true
@@ -356,7 +357,7 @@ impl PathingGrid {
             |point| {
                 (goals
                     .iter()
-                    .map(|x| self.heuristic(&point, x))
+                    .map(|x| self.heuristic(point, x))
                     .min()
                     .unwrap() as f32
                     * self.heuristic_factor) as i32
@@ -383,7 +384,7 @@ impl PathingGrid {
                 &start,
                 |parent, node| {
                     self.jps_neighbours(*parent, node, &|node_pos| {
-                        self.heuristic(&node_pos, &goal) <= 1
+                        self.heuristic(node_pos, &goal) <= 1
                     })
                 },
                 |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
