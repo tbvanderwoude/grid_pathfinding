@@ -5,6 +5,9 @@
 use indexmap::map::Entry::{Occupied, Vacant};
 use indexmap::IndexMap;
 use num_traits::Zero;
+use fxhash::FxBuildHasher;
+
+type FxIndexMap<K, V> = IndexMap<K, V, FxBuildHasher>;
 
 use log::warn;
 use std::cmp::Ordering;
@@ -41,7 +44,7 @@ impl<K: Ord> Ord for SmallestCostHolder<K> {
     }
 }
 
-fn reverse_path<N, V, F>(parents: &IndexMap<N, V>, mut parent: F, start: usize) -> Vec<N>
+fn reverse_path<N, V, F>(parents: &FxIndexMap<N, V>, mut parent: F, start: usize) -> Vec<N>
 where
     N: Eq + Hash + Clone,
     F: FnMut(&V) -> usize,
@@ -77,7 +80,7 @@ where
         cost: Zero::zero(),
         index: 0,
     });
-    let mut parents: IndexMap<N, (usize, C)> = IndexMap::new();
+    let mut parents: FxIndexMap<N, (usize, C)> = FxIndexMap::default();
     parents.insert(start.clone(), (usize::MAX, Zero::zero()));
     while let Some(SmallestCostHolder { cost, index, .. }) = to_see.pop() {
         let successors = {
