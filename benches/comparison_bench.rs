@@ -47,12 +47,12 @@ fn criterion_benchmark(c: &mut Criterion) {
             "4-grid"
         };
         let improved_str = if pruning{
-            "(improved pruning)"
+            " (improved pruning)"
         }
         else{
             ""
         };
-        c.bench_function(format!("1000 random 64x64 {diag_str}s {improved_str}").as_str(), |b| {
+        c.bench_function(format!("1000 random 64x64 {diag_str}s{improved_str}").as_str(), |b| {
             b.iter(|| {
                 for grid in &random_grids {
                     test(grid, start, end);
@@ -67,7 +67,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 random_grid_point(&grid, &mut rng),
             ))
         }
-        c.bench_function(format!("1000 random start goal pairs on a 64x64 {diag_str} {improved_str}").as_str(), |b| {
+        c.bench_function(format!("1000 random start goal pairs on a 64x64 {diag_str}{improved_str}").as_str(), |b| {
             b.iter(|| {
                 for (start, end) in &random_pairs {
                     test(&grid, start.clone(), end.clone());
