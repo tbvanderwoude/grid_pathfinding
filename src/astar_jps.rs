@@ -1,3 +1,4 @@
+use fxhash::FxBuildHasher;
 /// This module implements a variant of
 /// [pathfinding's astar function](https://docs.rs/pathfinding/latest/pathfinding/directed/astar/index.html)
 /// which enables the JPS implementation to generate successors based on the parent if there is one
@@ -6,6 +7,9 @@ use indexmap::map::Entry::{Occupied, Vacant};
 use indexmap::IndexMap;
 use num_traits::Zero;
 
+type FxIndexMap<K, V> = IndexMap<K, V, FxBuildHasher>;
+
+use log::warn;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
@@ -33,28 +37,31 @@ impl<K: Ord> PartialOrd for SmallestCostHolder<K> {
 
 impl<K: Ord> Ord for SmallestCostHolder<K> {
     fn cmp(&self, other: &Self) -> Ordering {
+        // First orders per estimated cost, then creates subordering
+        // based on cost, favoring exploration of smallest cost nodes first
         match other.estimated_cost.cmp(&self.estimated_cost) {
             Ordering::Equal => self.cost.cmp(&other.cost),
+            // Uncommenting this gives the opposite tie-breaking effect
+            // Ordering::Equal => other.cost.cmp(&self.cost),
             s => s,
         }
     }
 }
-#[allow(clippy::needless_collect)]
-fn reverse_path<N, V, F>(parents: &IndexMap<N, V>, mut parent: F, start: usize) -> Vec<N>
+
+fn reverse_path<N, V, F>(parents: &FxIndexMap<N, V>, mut parent: F, start: usize) -> Vec<N>
 where
     N: Eq + Hash + Clone,
     F: FnMut(&V) -> usize,
 {
-    let path = itertools::unfold(start, |i| {
+    let mut path: Vec<N> = itertools::unfold(start, |i| {
         parents.get_index(*i).map(|(node, value)| {
             *i = parent(value);
-            node
+            node.clone()
         })
     })
-    .collect::<Vec<&N>>();
-    // Collecting the going through the vector is needed to revert the path because the
-    // unfold iterator is not double-ended due to its iterative nature.
-    path.into_iter().rev().cloned().collect()
+    .collect();
+    path.reverse();
+    path
 }
 
 pub fn astar_jps<N, C, FN, IN, FH, FS>(
@@ -77,8 +84,8 @@ where
         cost: Zero::zero(),
         index: 0,
     });
-    let mut parents: IndexMap<N, (usize, C)> = IndexMap::new();
-    parents.insert(start.clone(), (usize::max_value(), Zero::zero()));
+    let mut parents: FxIndexMap<N, (usize, C)> = FxIndexMap::default();
+    parents.insert(start.clone(), (usize::MAX, Zero::zero()));
     while let Some(SmallestCostHolder { cost, index, .. }) = to_see.pop() {
         let successors = {
             let (node, &(parent_index, c)) = parents.get_index(index).unwrap();
@@ -93,6 +100,7 @@ where
                 continue;
             }
             let optional_parent_node = parents.get_index(parent_index).map(|x| x.0);
+
             successors(&optional_parent_node, node)
         };
         for (successor, move_cost) in successors {
@@ -123,5 +131,6 @@ where
             });
         }
     }
+    warn!("Reachable goal could not be pathed to, is reachable graph correct?");
     None
 }

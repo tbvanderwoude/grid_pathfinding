@@ -14,9 +14,11 @@ readme = "README.md"
 [dependencies]
 petgraph = "0.6.4"
 indexmap = "2.2"
+fxhash = "0.2"
 itertools = "0.12"
 num-traits = "0.2"
 grid_util = "0.1.1"
+log = "0.4"
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }

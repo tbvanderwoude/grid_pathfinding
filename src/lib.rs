@@ -8,7 +8,6 @@
 //! [connected components](https://en.wikipedia.org/wiki/Component_(graph_theory))
 //! to avoid flood-filling behaviour if no path exists.
 mod astar_jps;
-
 use grid_util::direction::Direction;
 use grid_util::grid::{BoolGrid, Grid, SimpleGrid};
 use grid_util::point::Point;
@@ -17,6 +16,26 @@ use petgraph::unionfind::UnionFind;
 use crate::astar_jps::astar_jps;
 use core::fmt;
 use std::collections::VecDeque;
+
+const EQUAL_EDGE_COST: bool = true;
+
+// Costs for diagonal and cardinal moves.
+// Values for unequal costs approximating a ratio D/C of sqrt(2) are from
+// https://github.com/riscy/a_star_on_grids
+const D: i32 = if EQUAL_EDGE_COST { 1 } else { 99 };
+const C: i32 = if EQUAL_EDGE_COST { 1 } else { 70 };
+const E: i32 = 2 * C - D;
+
+/// Helper function for debugging binary representations of neighborhoods.
+pub fn explain_bin_neighborhood(nn: u8) {
+    for i in 0..8_i32 {
+        let x = nn & (1 << i) != 0;
+        let dir = Direction::try_from(i.rem_euclid(8)).unwrap();
+        if x {
+            println!("\t\t {dir:?}");
+        }
+    }
+}
 
 /// Turns waypoints into a path on the grid which can be followed step by step. Due to symmetry this
 /// is typically one of many ways to follow the waypoints.
@@ -46,9 +65,9 @@ pub struct PathingGrid {
     pub components: UnionFind<usize>,
     pub components_dirty: bool,
     pub heuristic_factor: f32,
+    pub improved_pruning: bool,
+    pub allow_diagonal_move: bool,
 }
-
-const IMPROVED_PRUNING: bool = true;
 
 impl Default for PathingGrid {
     fn default() -> PathingGrid {
@@ -57,17 +76,40 @@ impl Default for PathingGrid {
             neighbours: SimpleGrid::default(),
             components: UnionFind::new(0),
             components_dirty: false,
+            improved_pruning: true,
             heuristic_factor: 1.0,
+            allow_diagonal_move: true,
         }
     }
 }
 impl PathingGrid {
-    fn get_neighbours(&self, point: Point) -> Vec<Point> {
-        point
-            .moore_neighborhood()
+    fn neighborhood_points(&self, point: &Point) -> Vec<Point> {
+        if self.allow_diagonal_move {
+            point.moore_neighborhood()
+        } else {
+            point.neumann_neighborhood()
+        }
+    }
+    fn neighborhood_points_and_cost(&self, pos: &Point) -> Vec<(Point, i32)> {
+        self.neighborhood_points(pos)
             .into_iter()
             .filter(|p| self.can_move_to(*p))
-            .collect::<Vec<Point>>()
+            // See comment in pruned_neighborhood about cost calculation
+            .map(move |p| (p, (pos.dir_obj(&p).num() % 2) * (D - C) + C))
+            .collect::<Vec<_>>()
+    }
+    /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
+    pub fn heuristic(&self, p1: &Point, p2: &Point) -> i32 {
+        if self.allow_diagonal_move {
+            let delta_x = (p1.x - p2.x).abs();
+            let delta_y = (p1.y - p2.y).abs();
+            // Formula from https://github.com/riscy/a_star_on_grids
+            // to efficiently compute the cost of a path taking the maximal amount
+            // of diagonal steps before going straight
+            (E * (delta_x - delta_y).abs() + D * (delta_x + delta_y)) / 2
+        } else {
+            p1.manhattan_distance(p2) * C
+        }
     }
     fn can_move_to(&self, pos: Point) -> bool {
         self.in_bounds(pos.x, pos.y) && !self.grid.get(pos.x as usize, pos.y as usize)
@@ -84,46 +126,46 @@ impl PathingGrid {
         if dir.diagonal() {
             !self.indexed_neighbor(node, 3 + dir_num) || !self.indexed_neighbor(node, 5 + dir_num)
         } else {
-            !self.indexed_neighbor(node, 2 + dir_num) || !self.indexed_neighbor(node, dir_num + 6)
+            !self.indexed_neighbor(node, 2 + dir_num) || !self.indexed_neighbor(node, 6 + dir_num)
         }
     }
+
     fn pruned_neighborhood<'a>(
         &self,
         dir: Direction,
         node: &'a Point,
-    ) -> (impl Iterator<Item = (Point, i32)> + 'a, bool) {
+    ) -> impl Iterator<Item = (Point, i32)> + 'a {
         let dir_num = dir.num();
         let mut n_mask: u8;
-        let neighbours = self.neighbours.get_point(*node);
-        let mut forced = false;
-        if dir.diagonal() {
-            n_mask = 131_u8.rotate_left(dir_num as u32);
+        let mut neighbours = self.neighbours.get_point(*node);
+        if !self.allow_diagonal_move {
+            neighbours &= 0b01010101;
+            n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
+        } else if dir.diagonal() {
+            n_mask = 0b10000011_u8.rotate_left(dir_num as u32);
             if !self.indexed_neighbor(node, 3 + dir_num) {
                 n_mask |= 1 << ((dir_num + 2) % 8);
-                forced = true;
             }
             if !self.indexed_neighbor(node, 5 + dir_num) {
                 n_mask |= 1 << ((dir_num + 6) % 8);
-                forced = true;
             }
         } else {
-            n_mask = 1 << dir_num;
+            n_mask = 0b00000001 << dir_num;
             if !self.indexed_neighbor(node, 2 + dir_num) {
                 n_mask |= 1 << ((dir_num + 1) % 8);
-                forced = true;
             }
             if !self.indexed_neighbor(node, 6 + dir_num) {
                 n_mask |= 1 << ((dir_num + 7) % 8);
-                forced = true;
             }
         }
         let comb_mask = neighbours & n_mask;
-        (
-            (0..8)
-                .filter(move |x| comb_mask & (1 << *x) != 0)
-                .map(|d| (node.moore_neighbor(d), 1)),
-            forced,
-        )
+        (0..8)
+            .step_by(if self.allow_diagonal_move { 1 } else { 2 })
+            .filter(move |x| comb_mask & (1 << *x) != 0)
+            // (dir_num % 2) * (D-C) + C)
+            // is an optimized version without a conditional of
+            // if dir.diagonal() {D} else {C}
+            .map(move |d| (node.moore_neighbor(d), (dir_num % 2) * (D - C) + C))
     }
 
     fn jump<F>(
@@ -132,6 +174,7 @@ impl PathingGrid {
         cost: i32,
         direction: Direction,
         goal: &F,
+        recurse: bool,
     ) -> Option<(Point, i32)>
     where
         F: Fn(&Point) -> bool,
@@ -141,26 +184,40 @@ impl PathingGrid {
             return None;
         }
 
-        if goal(&new_n) {
+        if goal(&new_n) || self.is_forced(direction, &new_n) {
             return Some((new_n, cost));
         }
-        if self.is_forced(direction, &new_n) {
-            return Some((new_n, cost));
-        }
+
         if direction.diagonal()
-            && (self.jump(&new_n, 1, direction.x_dir(), goal).is_some()
-                || self.jump(&new_n, 1, direction.y_dir(), goal).is_some())
+            && (self
+                .jump(&new_n, 1, direction.x_dir(), goal, false)
+                .is_some()
+                || self
+                    .jump(&new_n, 1, direction.y_dir(), goal, false)
+                    .is_some())
         {
             return Some((new_n, cost));
         }
-        self.jump(&new_n, cost + 1, direction, goal)
-    }
-    fn pathfinding_neighborhood(&self, pos: &Point) -> Vec<(Point, i32)> {
-        pos.moore_neighborhood()
-            .into_iter()
-            .filter(|&position| self.can_move_to(position))
-            .map(|p| (p, 1))
-            .collect::<Vec<_>>()
+        // When using a 4-neighborhood (specified by setting allow_diagonal_move to false),
+        // jumps perpendicular to the direction are performed. This is necessary to not miss the
+        // goal when passing by.
+        if recurse {
+            let perp_1 = direction.rotate_ccw(2);
+            let perp_2 = direction.rotate_cw(2);
+            if self.jump(&new_n, 1, perp_1, goal, false).is_some()
+                || self.jump(&new_n, 1, perp_2, goal, false).is_some()
+            {
+                return Some((new_n, cost));
+            }
+        }
+        // See comment in pruned_neighborhood about cost calculation
+        self.jump(
+            &new_n,
+            cost + (direction.num() % 2) * (D - C) + C,
+            direction,
+            goal,
+            recurse,
+        )
     }
     fn update_neighbours(&mut self, x: i32, y: i32, blocked: bool) {
         let p = Point::new(x, y);
@@ -186,30 +243,35 @@ impl PathingGrid {
             Some(parent_node) => {
                 let mut succ = vec![];
                 let dir = parent_node.dir_obj(node);
-                for (n, c) in self.pruned_neighborhood(dir, &node).0 {
+                for (n, c) in self.pruned_neighborhood(dir, node) {
                     let dir = node.dir_obj(&n);
-                    if let Some((jumped_node, cost)) = self.jump(node, c, dir, goal) {
-                        let neighbour_dir = node.dir_obj(&jumped_node);
-                        // If improved pruning is enabled, expand any diagonal and unforced
-                        if IMPROVED_PRUNING
+                    // Jumps the neighbor, skipping over unnecessary nodes.
+                    if let Some((jumped_node, cost)) =
+                        self.jump(node, c, dir, goal, !self.allow_diagonal_move)
+                    {
+                        // If improved pruning is enabled, expand any diagonal unforced nodes
+                        if self.improved_pruning
                             && dir.diagonal()
-                            && !self.is_forced(neighbour_dir, &jumped_node)
+                            && !goal(&jumped_node)
+                            && !self.is_forced(dir, &jumped_node)
                         {
-                            let jump_points =
-                                self.jps_neighbours(Some(parent_node), &jumped_node, goal);
+                            // Recursively expand the unforced diagonal node
+                            let jump_points = self.jps_neighbours(parent, &jumped_node, goal);
+
                             // Extend the successors with the neighbours of the unforced node, correcting the
                             // cost to include the cost from parent_node to jumped_node
                             succ.extend(jump_points.into_iter().map(|(p, c)| (p, c + cost)));
-                        }
-                        // TODO: check if there should be an else here?
-                        {
+                        } else {
                             succ.push((jumped_node, cost));
                         }
                     }
                 }
                 succ
             }
-            None => self.pathfinding_neighborhood(node),
+            None => {
+                // For the starting node, just generate the full normal neighborhood without any pruning or jumping.
+                self.neighborhood_points_and_cost(node)
+            }
         }
     }
     /// Retrieves the component id a given [Point] belongs to.
@@ -217,16 +279,16 @@ impl PathingGrid {
         self.components.find(self.get_ix_point(point))
     }
     /// Checks if start and goal are on the same component.
+    pub fn reachable(&self, start: &Point, goal: &Point) -> bool {
+        !self.unreachable(start, goal)
+    }
+
+    /// Checks if start and goal are on the same component.
     pub fn unreachable(&self, start: &Point, goal: &Point) -> bool {
         if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
             let start_ix = self.get_ix_point(start);
             let goal_ix = self.get_ix_point(goal);
-            if self.components.equiv(start_ix, goal_ix) {
-                false
-            } else {
-                // start_ix and goal_ix are not equivalent components
-                true
-            }
+            !self.components.equiv(start_ix, goal_ix)
         } else {
             true
         }
@@ -235,17 +297,24 @@ impl PathingGrid {
     pub fn neighbours_unreachable(&self, start: &Point, goal: &Point) -> bool {
         if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
             let start_ix = self.get_ix_point(start);
-            !goal.moore_neighborhood().iter().any(|p| {
-                self.in_bounds(p.x, p.y) && self.components.equiv(start_ix, self.get_ix_point(&p))
+            let neighborhood = self.neighborhood_points(goal);
+            neighborhood.iter().all(|p| {
+                !self.in_bounds(p.x, p.y) || !self.components.equiv(start_ix, self.get_ix_point(p))
             })
         } else {
             true
         }
     }
     /// Computes a path from start to goal using JPS. If approximate is [true], then it will
-    /// path to one of the neighbours of the goal, which is useful if goal itself is
-    /// blocked. The heuristic used is the
-    /// [Chebyshev distance](https://en.wikipedia.org/wiki/Chebyshev_distance).
+    /// path to one of the neighbours of the goal, which is useful if the goal itself is
+    /// blocked. If diagonals are allowed, the heuristic used computes the path cost
+    /// of taking the maximal number of diagonal moves before continuing straight. If diagonals are not allowed, the [Manhattan distance](https://en.wikipedia.org/wiki/Taxicab_geometry)
+    /// is used instead (see [heuristic](Self::heuristic)). This can be
+    /// specified by setting [allow_diagonal_move](Self::allow_diagonal_move).
+    /// The heuristic will be scaled by [heuristic_factor](Self::heuristic_factor) which can be used to trade optimality for faster solving for many practical problems, a technique
+    /// called Weighted A*. In pathfinding language, a factor greater than
+    /// 1.0 will make the heuristic [inadmissible](https://en.wikipedia.org/wiki/Admissible_heuristic), a requirement for solution optimality. By default,
+    /// the [heuristic_factor](Self::heuristic_factor) is 1.0 which gives optimal solutions.
     pub fn get_path_single_goal(
         &self,
         start: Point,
@@ -253,12 +322,10 @@ impl PathingGrid {
         approximate: bool,
     ) -> Option<Vec<Point>> {
         self.get_waypoints_single_goal(start, goal, approximate)
-            .map(|x| waypoints_to_path(x))
+            .map(waypoints_to_path)
     }
 
-    /// Computes a path from start to one of the given goals. This is done by taking the
-    /// [Chebyshev distance](https://en.wikipedia.org/wiki/Chebyshev_distance)
-    /// to the closest goal as heuristic value.
+    /// Computes a path from the start to one of the given goals and returns the selected goal in addition to the found path. Otherwise behaves similar to [get_path_single_goal](Self::get_path_single_goal).
     pub fn get_path_multiple_goals(
         &self,
         start: Point,
@@ -278,14 +345,18 @@ impl PathingGrid {
         }
         let result = astar_jps(
             &start,
-            |&parent, node| {
-                self.jps_neighbours(parent, node, &|node_pos| goals.contains(&node_pos))
+            |parent, node| {
+                self.jps_neighbours(*parent, node, &|node_pos| goals.contains(&node_pos))
             },
-            |&point| {
-                (goals.iter().map(|x| point.move_distance(*x)).min().unwrap() as f32
+            |point| {
+                (goals
+                    .iter()
+                    .map(|x| self.heuristic(point, x))
+                    .min()
+                    .unwrap() as f32
                     * self.heuristic_factor) as i32
             },
-            |node_pos| goals.contains(&node_pos),
+            |point| goals.contains(&point),
         );
         result.map(|(v, _c)| (*v.last().unwrap(), v))
     }
@@ -297,6 +368,7 @@ impl PathingGrid {
         approximate: bool,
     ) -> Option<Vec<Point>> {
         if approximate {
+            // Check if start and one of the goal neighbours are on the same connected component.
             if self.neighbours_unreachable(&start, &goal) {
                 // No neigbhours of the goal are reachable from the start
                 return None;
@@ -304,25 +376,25 @@ impl PathingGrid {
             // A neighbour of the goal can be reached, compute a path
             astar_jps(
                 &start,
-                |&parent, node| {
-                    self.jps_neighbours(parent, node, &|node_pos| {
-                        node_pos.move_distance(&goal) <= 1
+                |parent, node| {
+                    self.jps_neighbours(*parent, node, &|node_pos| {
+                        self.heuristic(node_pos, &goal) <= 1
                     })
                 },
-                |&point| (point.move_distance(&goal) as f32 * self.heuristic_factor) as i32,
-                |node_pos| node_pos.move_distance(&goal) <= 1,
+                |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
+                |point| self.heuristic(point, &goal) <= 1,
             )
         } else {
+            // Check if start and goal are on the same connected component.
             if self.unreachable(&start, &goal) {
-                // The goal is unreachable from the start
                 return None;
             }
             // The goal is reachable from the start, compute a path
             astar_jps(
                 &start,
-                |&parent, node| self.jps_neighbours(parent, node, &|node_pos| *node_pos == goal),
-                |&point| (point.move_distance(&goal) as f32 * self.heuristic_factor) as i32,
-                |node_pos| *node_pos == goal,
+                |parent, node| self.jps_neighbours(*parent, node, &|node_pos| *node_pos == goal),
+                |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
+                |point| *point == goal,
             )
         }
         .map(|(v, _c)| v)
@@ -345,11 +417,23 @@ impl PathingGrid {
                 if !self.grid.get(x, y) {
                     let parent_ix = self.grid.get_ix(x, y);
                     let point = Point::new(x as i32, y as i32);
-                    vec![
-                        Point::new(point.x, point.y + 1),
-                        Point::new(point.x + 1, point.y),
-                        Point::new(point.x + 1, point.y + 1),
-                    ]
+
+                    if self.allow_diagonal_move {
+                        vec![
+                            Point::new(point.x, point.y + 1),
+                            Point::new(point.x, point.y - 1),
+                            Point::new(point.x + 1, point.y),
+                            Point::new(point.x + 1, point.y - 1),
+                            Point::new(point.x + 1, point.y),
+                            Point::new(point.x + 1, point.y + 1),
+                        ]
+                    } else {
+                        vec![
+                            Point::new(point.x, point.y + 1),
+                            Point::new(point.x, point.y - 1),
+                            Point::new(point.x + 1, point.y),
+                        ]
+                    }
                     .into_iter()
                     .filter(|p| self.grid.point_in_bounds(*p) && !self.grid.get_point(*p))
                     .for_each(|p| {
@@ -385,10 +469,12 @@ impl Grid<bool> for PathingGrid {
     fn new(width: usize, height: usize, default_value: bool) -> Self {
         let mut base_grid = PathingGrid {
             grid: BoolGrid::new(width, height, default_value),
-            neighbours: SimpleGrid::new(width, height, 255),
+            neighbours: SimpleGrid::new(width, height, 0b11111111),
             components: UnionFind::new(width * height),
             components_dirty: false,
+            improved_pruning: true,
             heuristic_factor: 1.0,
+            allow_diagonal_move: true,
         };
         // Emulates 'placing' of blocked tile around map border to correctly initialize neighbours
         // and make behaviour of a map bordered by tiles the same as a borderless map.
@@ -412,11 +498,12 @@ impl Grid<bool> for PathingGrid {
         if self.grid.get(x, y) != blocked && blocked {
             self.components_dirty = true;
         } else {
-            for p in self.get_neighbours(p) {
-                self.components.union(
-                    self.grid.get_ix(x, y),
-                    self.grid.get_ix(p.x as usize, p.y as usize),
-                );
+            let p_ix = self.grid.get_ix(x, y);
+            for p in self.neighborhood_points(&p) {
+                if self.can_move_to(p) {
+                    self.components
+                        .union(p_ix, self.grid.get_ix(p.x as usize, p.y as usize));
+                }
             }
         }
         self.update_neighbours(p.x, p.y, blocked);
@@ -432,7 +519,10 @@ impl Grid<bool> for PathingGrid {
 
 #[cfg(test)]
 mod tests {
+    use grid_util::Rect;
+
     use super::*;
+
     /// Tests whether points are correctly mapped to different connected components
     #[test]
     fn test_component_generation() {
@@ -460,7 +550,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unreachable() {
+    fn reachable_with_diagonals() {
         let mut path_graph = PathingGrid::new(3, 2, false);
         path_graph.grid.set(1, 0, true);
         path_graph.grid.set(1, 1, true);
@@ -476,32 +566,165 @@ mod tests {
         assert!(path_graph.neighbours_unreachable(&p1, &p4));
     }
 
-    /// Corresponds to the simple example, asserts that the optimal 4 step solution is found.
+    /// Asserts that the two corners are connected on a 4-grid.
     #[test]
-    fn solve_simple_problem() {
+    fn reachable_without_diagonals() {
+        // |S  |
+        // | # |
+        // |  G|
+        //  ___
         let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
+        pathing_grid.improved_pruning = false;
+        pathing_grid.allow_diagonal_move = false;
         pathing_grid.set(1, 1, true);
         pathing_grid.generate_components();
         let start = Point::new(0, 0);
         let end = Point::new(2, 2);
-        let path = pathing_grid
-            .get_path_single_goal(start, end, false)
-            .unwrap();
-        // The shortest path takes 4 steps
-        assert!(path.len() == 4);
+        assert!(pathing_grid.reachable(&start, &end));
+    }
+
+    /// Asserts that the case in which start and goal are equal is handled correctly.
+    #[test]
+    fn equal_start_goal() {
+        for (allow_diag, pruning) in [(false, false), (true, false), (true, true)] {
+            let mut pathing_grid: PathingGrid = PathingGrid::new(1, 1, false);
+            pathing_grid.allow_diagonal_move = allow_diag;
+            pathing_grid.improved_pruning = pruning;
+            pathing_grid.generate_components();
+            let start = Point::new(0, 0);
+            let path = pathing_grid
+                .get_path_single_goal(start, start, false)
+                .unwrap();
+            assert!(path.len() == 1);
+        }
+    }
+
+    /// Asserts that the optimal 4 step solution is found.
+    #[test]
+    fn solve_simple_problem() {
+        for (allow_diag, pruning, expected) in
+            [(false, false, 5), (true, false, 4), (true, true, 4)]
+        {
+            let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
+            pathing_grid.allow_diagonal_move = allow_diag;
+            pathing_grid.improved_pruning = pruning;
+            pathing_grid.set(1, 1, true);
+            pathing_grid.generate_components();
+            let start = Point::new(0, 0);
+            let end = Point::new(2, 2);
+            let path = pathing_grid
+                .get_path_single_goal(start, end, false)
+                .unwrap();
+            assert!(path.len() == expected);
+        }
     }
 
     #[test]
     fn test_multiple_goals() {
-        let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
-        pathing_grid.set(1, 1, true);
-        pathing_grid.generate_components();
-        println!("{}", pathing_grid);
+        for (allow_diag, pruning, expected) in
+            [(false, false, 7), (true, false, 5), (true, true, 5)]
+        {
+            let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
+            pathing_grid.allow_diagonal_move = allow_diag;
+            pathing_grid.improved_pruning = pruning;
+            pathing_grid.set(1, 1, true);
+            pathing_grid.generate_components();
+            let start = Point::new(0, 0);
+            let goal_1 = Point::new(4, 4);
+            let goal_2 = Point::new(3, 3);
+            let goals = vec![&goal_1, &goal_2];
+            let (selected_goal, path) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
+            assert_eq!(selected_goal, Point::new(3, 3));
+            assert!(path.len() == expected);
+        }
+    }
+
+    #[test]
+    fn test_complex() {
+        for (allow_diag, pruning, expected) in
+            [(false, false, 15), (true, false, 10), (true, true, 10)]
+        {
+            let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
+            pathing_grid.set_rectangle(&Rect::new(1, 1, 2, 2), true);
+            pathing_grid.set_rectangle(&Rect::new(5, 0, 2, 2), true);
+            pathing_grid.set_rectangle(&Rect::new(0, 5, 2, 2), true);
+            pathing_grid.set_rectangle(&Rect::new(8, 8, 2, 2), true);
+            // pathing_grid.improved_pruning = false;
+            pathing_grid.allow_diagonal_move = allow_diag;
+            pathing_grid.improved_pruning = pruning;
+            pathing_grid.generate_components();
+            let start = Point::new(0, 0);
+            let end = Point::new(7, 7);
+            let path = pathing_grid
+                .get_path_single_goal(start, end, false)
+                .unwrap();
+            assert!(path.len() == expected);
+        }
+    }
+    #[test]
+    fn test_complex_waypoints() {
+        for (allow_diag, pruning, expected) in
+            [(false, false, 11), (true, false, 7), (true, true, 5)]
+        {
+            let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
+            pathing_grid.set_rectangle(&Rect::new(1, 1, 2, 2), true);
+            pathing_grid.set_rectangle(&Rect::new(5, 0, 2, 2), true);
+            pathing_grid.set_rectangle(&Rect::new(0, 5, 2, 2), true);
+            pathing_grid.set_rectangle(&Rect::new(8, 8, 2, 2), true);
+            // pathing_grid.improved_pruning = false;
+            pathing_grid.allow_diagonal_move = allow_diag;
+            pathing_grid.improved_pruning = pruning;
+            pathing_grid.generate_components();
+            let start = Point::new(0, 0);
+            let end = Point::new(7, 7);
+            let path = pathing_grid
+                .get_waypoints_single_goal(start, end, false)
+                .unwrap();
+            assert!(path.len() == expected);
+        }
+    }
+
+    // Tests whether allowing diagonals has the expected effect on diagonal reachability in a minimal setting.
+    #[test]
+    fn test_diagonal_switch_reachable() {
+        //  ___
+        // | #|
+        // |# |
+        //  __
+        let mut pathing_grid: PathingGrid = PathingGrid::new(2, 2, true);
+        pathing_grid.allow_diagonal_move = false;
+        let mut pathing_grid_diag: PathingGrid = PathingGrid::new(2, 2, true);
+        for pathing_grid in [&mut pathing_grid, &mut pathing_grid_diag] {
+            pathing_grid.set(0, 0, false);
+            pathing_grid.set(1, 1, false);
+            pathing_grid.generate_components();
+        }
         let start = Point::new(0, 0);
-        let goal_1 = Point::new(4, 4);
-        let goal_2 = Point::new(2, 2);
-        let goals = vec![&goal_1, &goal_2];
-        let (selected_goal, _) = pathing_grid.get_path_multiple_goals(start, goals).unwrap();
-        assert_eq!(selected_goal, Point::new(2, 2));
+        let end = Point::new(1, 1);
+        assert!(pathing_grid.unreachable(&start, &end));
+        assert!(pathing_grid_diag.reachable(&start, &end));
+    }
+
+    // Tests whether allowing diagonals has the expected effect on path existence in a minimal setting.
+    #[test]
+    fn test_diagonal_switch_path() {
+        //  ___
+        // | #|
+        // |# |
+        //  __
+        let mut pathing_grid: PathingGrid = PathingGrid::new(2, 2, true);
+        pathing_grid.allow_diagonal_move = false;
+        let mut pathing_grid_diag: PathingGrid = PathingGrid::new(2, 2, true);
+        for pathing_grid in [&mut pathing_grid, &mut pathing_grid_diag] {
+            pathing_grid.set(0, 0, false);
+            pathing_grid.set(1, 1, false);
+            pathing_grid.generate_components();
+        }
+        let start = Point::new(0, 0);
+        let goal = Point::new(1, 1);
+        let path = pathing_grid.get_path_single_goal(start, goal, false);
+        let path_diag = pathing_grid_diag.get_path_single_goal(start, goal, false);
+        assert!(path.is_none());
+        assert!(path_diag.is_some());
     }
 }

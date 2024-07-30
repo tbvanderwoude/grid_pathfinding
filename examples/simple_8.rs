@@ -12,6 +12,8 @@ use grid_util::point::Point;
 // - # marks an obstacle
 // - S marks the start
 // - E marks the end
+//
+// Nodes have an 8-neighborhood
 
 fn main() {
     let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
