@@ -566,7 +566,7 @@ mod tests {
         assert!(path_graph.neighbours_unreachable(&p1, &p4));
     }
 
-    /// Asserts that the optimal 4 step solution is found. Uses improved pruning and allows diagonals.
+    /// Asserts that the two corners are connected on a 4-grid.
     #[test]
     fn reachable_without_diagonals() {
         // |S  |
@@ -599,7 +599,7 @@ mod tests {
         }
     }
 
-    /// Asserts that the optimal 4 step solution is found. Does not allow diagonals.
+    /// Asserts that the optimal 4 step solution is found.
     #[test]
     fn solve_simple_problem() {
         for (allow_diag, pruning, expected) in
@@ -615,7 +615,6 @@ mod tests {
             let path = pathing_grid
                 .get_path_single_goal(start, end, false)
                 .unwrap();
-            // The shortest path takes 5 steps
             assert!(path.len() == expected);
         }
     }
@@ -659,7 +658,6 @@ mod tests {
             let path = pathing_grid
                 .get_path_single_goal(start, end, false)
                 .unwrap();
-            // The shortest path takes 5 steps
             assert!(path.len() == expected);
         }
     }
@@ -682,14 +680,13 @@ mod tests {
             let path = pathing_grid
                 .get_waypoints_single_goal(start, end, false)
                 .unwrap();
-            // The shortest path takes 5 steps
             assert!(path.len() == expected);
         }
     }
 
+    // Tests whether allowing diagonals has the expected effect on diagonal reachability in a minimal setting.
     #[test]
     fn test_diagonal_switch_reachable() {
-        // Tests the effect of allowing diagonals in solving the following 2x2 grid:
         //  ___
         // | #|
         // |# |
@@ -708,9 +705,9 @@ mod tests {
         assert!(pathing_grid_diag.reachable(&start, &end));
     }
 
+    // Tests whether allowing diagonals has the expected effect on path existence in a minimal setting.
     #[test]
     fn test_diagonal_switch_path() {
-        // Tests the effect of allowing diagonals in solving the following 2x2 grid:
         //  ___
         // | #|
         // |# |
