@@ -307,7 +307,7 @@ impl PathingGrid {
         !self.unreachable(start, goal)
     }
 
-    /// Checks if start and goal are on the same component.
+    /// Checks if start and goal are not on the same component.
     pub fn unreachable(&self, start: &Point, goal: &Point) -> bool {
         if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
             let start_ix = self.get_ix_point(start);
