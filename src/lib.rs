@@ -295,11 +295,7 @@ impl PathingGrid {
     pub fn neighbours_unreachable(&self, start: &Point, goal: &Point) -> bool {
         if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
             let start_ix = self.get_ix_point(start);
-            let neighborhood = if self.allow_diagonal_move {
-                goal.moore_neighborhood()
-            } else {
-                goal.neumann_neighborhood()
-            };
+            let neighborhood = self.neighborhood_points(goal);
             neighborhood.iter().all(|p| {
                 !self.in_bounds(p.x, p.y) || !self.components.equiv(start_ix, self.get_ix_point(p))
             })
