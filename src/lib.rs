@@ -168,6 +168,81 @@ impl PathingGrid {
             .map(move |d| (node.moore_neighbor(d), (dir_num % 2) * (D - C) + C))
     }
 
+    fn jump_straight<F>(
+        &self,
+        mut initial: Point,
+        mut cost: i32,
+        direction: Direction,
+        goal: &F,
+    ) -> Option<(Point, i32)>
+    where
+        F: Fn(&Point) -> bool,
+    {
+        loop {
+            initial = initial + direction;
+            cost += (direction.num() % 2) * (D - C) + C;
+            if !self.can_move_to(initial) {
+                return None;
+            }
+
+            if goal(&initial) || self.is_forced(direction, &initial) {
+                return Some((initial, cost));
+            }
+        }
+    }
+
+    fn jump_iter<F>(
+        &self,
+        initial: &Point,
+        cost: i32,
+        direction: Direction,
+        goal: &F,
+        recurse: bool,
+    ) -> Option<(Point, i32)>
+    where
+        F: Fn(&Point) -> bool,
+    {
+        let new_n = *initial + direction;
+        if !self.can_move_to(new_n) {
+            return None;
+        }
+
+        if goal(&new_n) || self.is_forced(direction, &new_n) {
+            return Some((new_n, cost));
+        }
+
+        if direction.diagonal()
+            && (self
+                .jump_straight(new_n, 1, direction.x_dir(), goal)
+                .is_some()
+                || self
+                    .jump_straight(new_n, 1, direction.y_dir(), goal)
+                    .is_some())
+        {
+            return Some((new_n, cost));
+        }
+        // When using a 4-neighborhood (specified by setting allow_diagonal_move to false),
+        // jumps perpendicular to the direction are performed. This is necessary to not miss the
+        // goal when passing by.
+        if recurse {
+            let perp_1 = direction.rotate_ccw(2);
+            let perp_2 = direction.rotate_cw(2);
+            if self.jump_straight(new_n, 1, perp_1, goal).is_some()
+                || self.jump_straight(new_n, 1, perp_2, goal).is_some()
+            {
+                return Some((new_n, cost));
+            }
+        }
+        // See comment in pruned_neighborhood about cost calculation
+        self.jump(
+            &new_n,
+            cost + (direction.num() % 2) * (D - C) + C,
+            direction,
+            goal,
+            recurse,
+        )
+    }
+
     fn jump<F>(
         &self,
         initial: &Point,
@@ -247,7 +322,7 @@ impl PathingGrid {
                     let dir = node.dir_obj(&n);
                     // Jumps the neighbor, skipping over unnecessary nodes.
                     if let Some((jumped_node, cost)) =
-                        self.jump(node, c, dir, goal, !self.allow_diagonal_move)
+                        self.jump_iter(node, c, dir, goal, !self.allow_diagonal_move)
                     {
                         // If improved pruning is enabled, expand any diagonal unforced nodes
                         if self.improved_pruning
