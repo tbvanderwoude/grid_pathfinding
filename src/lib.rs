@@ -92,11 +92,11 @@ impl PathingGrid {
     }
     fn neighborhood_points_and_cost(&self, pos: &Point) -> Vec<(Point, i32)> {
         self.neighborhood_points(pos)
-        .into_iter()
-        .filter(|p| self.can_move_to(*p))
-        // See comment in pruned_neighborhood about cost calculation
-        .map(move |p| (p, (pos.dir_obj(&p).num() % 2) * (D - C) + C))
-        .collect::<Vec<_>>()
+            .into_iter()
+            .filter(|p| self.can_move_to(*p))
+            // See comment in pruned_neighborhood about cost calculation
+            .map(move |p| (p, (pos.dir_obj(&p).num() % 2) * (D - C) + C))
+            .collect::<Vec<_>>()
     }
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
     pub fn heuristic(&self, p1: &Point, p2: &Point) -> i32 {
@@ -200,7 +200,7 @@ impl PathingGrid {
         }
         // When using a 4-neighborhood (specified by setting allow_diagonal_move to false),
         // jumps perpendicular to the direction are performed. This is necessary to not miss the
-        // goal when passing by. 
+        // goal when passing by.
         if recurse {
             let perp_1 = direction.rotate_ccw(2);
             let perp_2 = direction.rotate_cw(2);
@@ -246,7 +246,9 @@ impl PathingGrid {
                 for (n, c) in self.pruned_neighborhood(dir, node) {
                     let dir = node.dir_obj(&n);
                     // Jumps the neighbor, skipping over unnecessary nodes.
-                    if let Some((jumped_node, cost)) = self.jump(node, c, dir, goal, !self.allow_diagonal_move) {
+                    if let Some((jumped_node, cost)) =
+                        self.jump(node, c, dir, goal, !self.allow_diagonal_move)
+                    {
                         // If improved pruning is enabled, expand any diagonal unforced nodes
                         if self.improved_pruning
                             && dir.diagonal()
@@ -496,12 +498,11 @@ impl Grid<bool> for PathingGrid {
         if self.grid.get(x, y) != blocked && blocked {
             self.components_dirty = true;
         } else {
+            let p_ix = self.grid.get_ix(x, y);
             for p in self.neighborhood_points(&p) {
                 if self.can_move_to(p) {
-                    self.components.union(
-                        self.grid.get_ix(x, y),
-                        self.grid.get_ix(p.x as usize, p.y as usize),
-                    );
+                    self.components
+                        .union(p_ix, self.grid.get_ix(p.x as usize, p.y as usize));
                 }
             }
         }
