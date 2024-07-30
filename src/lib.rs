@@ -168,6 +168,7 @@ impl PathingGrid {
             .map(move |d| (node.moore_neighbor(d), (dir_num % 2) * (D - C) + C))
     }
 
+    /// Straight jump in a cardinal direction.
     fn jump_straight<F>(
         &self,
         mut initial: Point,
@@ -178,6 +179,7 @@ impl PathingGrid {
     where
         F: Fn(&Point) -> bool,
     {
+        debug_assert!(!direction.diagonal());
         loop {
             initial = initial + direction;
             if !self.can_move_to(initial) {
@@ -188,11 +190,12 @@ impl PathingGrid {
                 return Some((initial, cost));
             }
 
-            // See comment in pruned_neighborhood about cost calculation
-            cost += (direction.num() % 2) * (D - C) + C;
+            // Straight jumps always take cardinal cost
+            cost += C;
         }
     }
 
+    /// Performs the jumping of node neighbours, skipping over unnecessary nodes until a goal or a forced node is found.
     fn jump<F>(
         &self,
         mut initial: Point,
