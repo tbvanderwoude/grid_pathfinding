@@ -1,7 +1,8 @@
 /// Fuzzes pathfinding system by checking for many random grids that a path is always found if the goal is reachable
 /// by being part of the same connected component. All system settings (diagonals, improved pruning) are tested.
 
-use super::*;
+use grid_pathfinding::*;
+use grid_util::*;
 use rand::prelude::*;
 
 fn random_grid(n: usize, rng: &mut StdRng, diagonal: bool, improved_pruning: bool) -> PathingGrid {
