@@ -244,6 +244,7 @@ impl PathingGrid {
         }
     }
 
+    /// Updates the neighbours grid after changing the grid.
     fn update_neighbours(&mut self, x: i32, y: i32, blocked: bool) {
         let p = Point::new(x, y);
         for i in 0..8 {
