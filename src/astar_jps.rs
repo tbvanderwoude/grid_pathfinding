@@ -1,3 +1,4 @@
+use fxhash::FxBuildHasher;
 /// This module implements a variant of
 /// [pathfinding's astar function](https://docs.rs/pathfinding/latest/pathfinding/directed/astar/index.html)
 /// which enables the JPS implementation to generate successors based on the parent if there is one
@@ -5,7 +6,6 @@
 use indexmap::map::Entry::{Occupied, Vacant};
 use indexmap::IndexMap;
 use num_traits::Zero;
-use fxhash::FxBuildHasher;
 
 type FxIndexMap<K, V> = IndexMap<K, V, FxBuildHasher>;
 
@@ -34,7 +34,6 @@ impl<K: Ord> PartialOrd for SmallestCostHolder<K> {
         Some(self.cmp(other))
     }
 }
-
 
 impl<K: Ord> Ord for SmallestCostHolder<K> {
     fn cmp(&self, other: &Self) -> Ordering {

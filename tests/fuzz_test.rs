@@ -1,6 +1,5 @@
 /// Fuzzes pathfinding system by checking for many random grids that a path is always found if the goal is reachable
 /// by being part of the same connected component. All system settings (diagonals, improved pruning) are tested.
-
 use grid_pathfinding::*;
 use grid_util::*;
 use rand::prelude::*;
