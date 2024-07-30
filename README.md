@@ -49,5 +49,16 @@ prior to component generation, which is done in example [simple_4](examples/simp
 
 See [examples](examples/) for finding paths with multiple goals and generating waypoints instead of full paths.
 
+### Benchmarks
+To run a set of benchmarks, use `cargo bench`. A baseline can be set using
+```bash
+cargo bench -- --save-baseline main
+```
+New runs can be compared to this baseline using 
+```bash
+cargo bench -- --baseline main
+```
+
+
 ### Goal of crate
 The long-term goal of this crate is to provide a fast off-the-shelf pathfinding implementation for grids.
