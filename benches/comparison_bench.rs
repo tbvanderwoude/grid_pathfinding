@@ -30,7 +30,7 @@ fn random_grid_point(grid: &PathingGrid, rng: &mut StdRng) -> Point {
 }
 
 fn test(pathing_grid: &PathingGrid, start: Point, end: Point) -> Option<Vec<Point>> {
-    pathing_grid.get_path_single_goal(start, end, false)
+    black_box(pathing_grid.get_path_single_goal(start, end, false))
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
