@@ -317,7 +317,21 @@ impl PathingGrid {
             true
         }
     }
+
     /// Checks if any neighbour of the goal is on the same component as the start.
+    pub fn neighbours_reachable(&self, start: &Point, goal: &Point) -> bool {
+        if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
+            let start_ix = self.get_ix_point(start);
+            let neighborhood = self.neighborhood_points(goal);
+            neighborhood.iter().any(|p| {
+                self.in_bounds(p.x, p.y) && self.components.equiv(start_ix, self.get_ix_point(p))
+            })
+        } else {
+            true
+        }
+    }
+
+    /// Checks if every neighbour of the goal is on a different component as the start.
     pub fn neighbours_unreachable(&self, start: &Point, goal: &Point) -> bool {
         if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
             let start_ix = self.get_ix_point(start);
