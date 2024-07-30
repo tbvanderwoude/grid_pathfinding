@@ -199,7 +199,6 @@ impl PathingGrid {
         mut cost: i32,
         direction: Direction,
         goal: &F,
-        recurse: bool,
     ) -> Option<(Point, i32)>
     where
         F: Fn(&Point) -> bool,
@@ -227,7 +226,7 @@ impl PathingGrid {
             // When using a 4-neighborhood (specified by setting allow_diagonal_move to false),
             // jumps perpendicular to the direction are performed. This is necessary to not miss the
             // goal when passing by.
-            if recurse {
+            if !self.allow_diagonal_move {
                 let perp_1 = direction.rotate_ccw(2);
                 let perp_2 = direction.rotate_cw(2);
                 if self.jump_straight(initial, 1, perp_1, goal).is_some()
@@ -270,7 +269,7 @@ impl PathingGrid {
                     let dir = node.dir_obj(&n);
                     // Jumps the neighbor, skipping over unnecessary nodes.
                     if let Some((jumped_node, cost)) =
-                        self.jump(*node, c, dir, goal, !self.allow_diagonal_move)
+                        self.jump(*node, c, dir, goal)
                     {
                         // If improved pruning is enabled, expand any diagonal unforced nodes
                         if self.improved_pruning
