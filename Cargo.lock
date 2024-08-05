@@ -249,8 +249,8 @@ name = "grid_pathfinding"
 version = "0.2.0"
 dependencies = [
  "criterion",
- "csv",
  "fxhash",
+ "grid_pathfinding_benchmark",
  "grid_util",
  "indexmap 2.2.6",
  "itertools 0.12.1",
@@ -258,6 +258,15 @@ dependencies = [
  "num-traits",
  "petgraph",
  "rand",
+]
+
+[[package]]
+name = "grid_pathfinding_benchmark"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "csv",
+ "grid_util",
  "serde",
  "walkdir",
 ]

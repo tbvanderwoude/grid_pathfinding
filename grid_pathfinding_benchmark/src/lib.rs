@@ -1,10 +1,8 @@
 use csv::ReaderBuilder;
-use grid_pathfinding::PathingGrid;
 use grid_util::grid::Grid;
 use grid_util::point::Point;
 use grid_util::BoolGrid;
 use serde::Deserialize;
-use std::error::Error;
 use std::fs::{self, File};
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -12,7 +10,7 @@ use std::time::{Duration, Instant};
 use walkdir::WalkDir;
 
 #[derive(Debug, Deserialize)]
-struct Scenario {
+pub struct Scenario {
     id: u32,
     file_name: String,
     w: u32,
@@ -82,7 +80,7 @@ fn load_benchmark(name: &str) -> (BoolGrid, Vec<(Point, Point)>) {
     (bool_grid, data_array)
 }
 
-fn get_benchmark_names() -> Vec<String> {
+pub fn get_benchmark_names() -> Vec<String> {
     let root = Path::new("maps/");
     let root = root
         .canonicalize()
@@ -104,40 +102,11 @@ fn get_benchmark_names() -> Vec<String> {
     names
 }
 
-fn main() {
+pub fn get_benchmark(name: String) -> (BoolGrid, Vec<(Point, Point)>) {
     let benchmark_names = get_benchmark_names();
-    let mut total_time = Duration::ZERO;
-    for name in benchmark_names {
-        println!("Benchmark name: {}", name);
-
-        let (bool_grid, scenarios) = load_benchmark(name.as_str());
-        // for (allow_diag, pruning) in [(false, false), (true, false), (true, true)] {
-        for (allow_diag, pruning) in [(true, false)] {
-            let mut pathing_grid: PathingGrid =
-                PathingGrid::new(bool_grid.width, bool_grid.height, true);
-            pathing_grid.grid = bool_grid.clone();
-            pathing_grid.allow_diagonal_move = allow_diag;
-            pathing_grid.improved_pruning = pruning;
-            pathing_grid.update_all_neighbours();
-            pathing_grid.generate_components();
-            let number_of_scenarios = scenarios.len() as u32;
-            let before = Instant::now();
-            run_scenarios(&pathing_grid, &scenarios);
-            let elapsed = before.elapsed();
-            println!(
-                "\tElapsed time: {:.2?}; per scenario: {:.2?}",
-                elapsed,
-                elapsed / number_of_scenarios
-            );
-            total_time += elapsed;
-        }
-    }
-    println!("\tTotal benchmark time: {:.2?}", total_time);
-}
-
-pub fn run_scenarios(pathing_grid: &PathingGrid, scenarios: &Vec<(Point, Point)>) {
-    for (start, goal) in scenarios {
-        let path: Option<Vec<Point>> = pathing_grid.get_waypoints_single_goal(*start, *goal, false);
-        assert!(path.is_some());
+    if benchmark_names.contains(&name) {
+        load_benchmark(name.as_str())
+    } else {
+        panic!("Could not load benchmark!");
     }
 }

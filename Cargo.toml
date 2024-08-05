@@ -26,9 +26,7 @@ bench = false
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }
 rand = "0.8.5"
-csv = "1.3.0"
-serde = "1.0.204"
-walkdir = "2.5.0"
+grid_pathfinding_benchmark = { path = "grid_pathfinding_benchmark" }
 
 [[bench]]
 name = "comparison_bench"
