@@ -8,7 +8,8 @@ use std::error::Error;
 use std::fs::{self, File};
 use std::io::{self, BufRead};
 use std::path::Path;
-use std::time::Instant;
+use std::time::{Duration, Instant};
+use walkdir::WalkDir;
 
 #[derive(Debug, Deserialize)]
 struct Scenario {
@@ -80,15 +81,36 @@ fn load_benchmark(name: &str) -> (BoolGrid, Vec<(Point, Point)>) {
     }
     (bool_grid, data_array)
 }
+
+fn get_benchmark_names() -> Vec<String> {
+    let root = Path::new("maps/");
+    let root = root
+        .canonicalize()
+        .expect("Failed to canonicalize root path");
+    let mut names = Vec::new();
+    for entry in WalkDir::new(&root).into_iter().skip(2) {
+        let path_str = entry.expect("Could not get dir entry");
+        let name = path_str
+            .path()
+            .strip_prefix(&root)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .split_once('.')
+            .unwrap()
+            .0;
+        names.push(name.to_owned());
+    }
+    names
+}
+
 fn main() {
-    let paths = fs::read_dir("./maps").unwrap();
+    let benchmark_names = get_benchmark_names();
+    let mut total_time = Duration::ZERO;
+    for name in benchmark_names {
+        println!("Benchmark name: {}", name);
 
-    for path in paths {
-        let filename = path.unwrap().file_name();
-        let name = filename.to_str().unwrap().split_once('.').unwrap().0;
-        println!("Name: {}", name);
-
-        let (bool_grid, scenarios) = load_benchmark(name);
+        let (bool_grid, scenarios) = load_benchmark(name.as_str());
         // for (allow_diag, pruning) in [(false, false), (true, false), (true, true)] {
         for (allow_diag, pruning) in [(true, false)] {
             let mut pathing_grid: PathingGrid =
@@ -96,7 +118,7 @@ fn main() {
             pathing_grid.grid = bool_grid.clone();
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
-            pathing_grid.compute_all_neighbours();
+            pathing_grid.update_all_neighbours();
             pathing_grid.generate_components();
             let number_of_scenarios = scenarios.len() as u32;
             let before = Instant::now();
@@ -107,8 +129,10 @@ fn main() {
                 elapsed,
                 elapsed / number_of_scenarios
             );
+            total_time += elapsed;
         }
     }
+    println!("\tTotal benchmark time: {:.2?}", total_time);
 }
 
 pub fn run_scenarios(pathing_grid: &PathingGrid, scenarios: &Vec<(Point, Point)>) {
