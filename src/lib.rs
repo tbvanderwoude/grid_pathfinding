@@ -18,6 +18,7 @@ use core::fmt;
 use std::collections::VecDeque;
 
 const EQUAL_EDGE_COST: bool = true;
+const GRAPH_PRUNING: bool = true;
 
 // Costs for diagonal and cardinal moves.
 // Values for unequal costs approximating a ratio D/C of sqrt(2) are from
@@ -384,7 +385,11 @@ impl PathingGrid {
         let result = astar_jps(
             &start,
             |parent, node| {
-                self.jps_neighbours(*parent, node, &|node_pos| goals.contains(&node_pos))
+                if GRAPH_PRUNING {
+                    self.jps_neighbours(*parent, node, &|node_pos| goals.contains(&node_pos))
+                } else {
+                    self.neighborhood_points_and_cost(node)
+                }
             },
             |point| {
                 (goals
@@ -415,9 +420,13 @@ impl PathingGrid {
             astar_jps(
                 &start,
                 |parent, node| {
-                    self.jps_neighbours(*parent, node, &|node_pos| {
-                        self.heuristic(node_pos, &goal) <= 1
-                    })
+                    if GRAPH_PRUNING {
+                        self.jps_neighbours(*parent, node, &|node_pos| {
+                            self.heuristic(node_pos, &goal) <= 1
+                        })
+                    } else {
+                        self.neighborhood_points_and_cost(node)
+                    }
                 },
                 |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
                 |point| self.heuristic(point, &goal) <= 1,
@@ -430,7 +439,13 @@ impl PathingGrid {
             // The goal is reachable from the start, compute a path
             astar_jps(
                 &start,
-                |parent, node| self.jps_neighbours(*parent, node, &|node_pos| *node_pos == goal),
+                |parent, node| {
+                    if GRAPH_PRUNING {
+                        self.jps_neighbours(*parent, node, &|node_pos| *node_pos == goal)
+                    } else {
+                        self.neighborhood_points_and_cost(node)
+                    }
+                },
                 |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
                 |point| *point == goal,
             )
