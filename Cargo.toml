@@ -25,7 +25,6 @@ bench = false
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }
-rand = "0.8.5"
 grid_pathfinding_benchmark = { path = "grid_pathfinding_benchmark" }
 
 [[bench]]
