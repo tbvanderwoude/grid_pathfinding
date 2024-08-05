@@ -444,6 +444,14 @@ impl PathingGrid {
             self.generate_components();
         }
     }
+
+    pub fn update_all_neighbours(&mut self) {
+        for x in 0..self.width() {
+            for y in 0..self.height() {
+                self.update_neighbours(x as i32, y as i32, self.get(x, y));
+            }
+        }
+    }
     /// Generates a new [UnionFind] structure and links up grid neighbours to the same components.
     pub fn generate_components(&mut self) {
         let w = self.grid.width;
