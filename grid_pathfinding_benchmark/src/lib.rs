@@ -8,6 +8,7 @@ use std::io::{self, BufRead};
 use std::path::Path;
 use walkdir::WalkDir;
 
+#[allow(unused)]
 #[derive(Debug, Deserialize)]
 pub struct Scenario {
     id: u32,
