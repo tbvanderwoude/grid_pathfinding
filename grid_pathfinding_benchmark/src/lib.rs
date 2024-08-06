@@ -85,18 +85,21 @@ pub fn get_benchmark_names() -> Vec<String> {
         .canonicalize()
         .expect("Failed to canonicalize root path");
     let mut names = Vec::new();
-    for entry in WalkDir::new(&root).into_iter().skip(2) {
+    for entry in WalkDir::new(&root).into_iter() {
         let path_str = entry.expect("Could not get dir entry");
-        let name = path_str
-            .path()
-            .strip_prefix(&root)
-            .unwrap()
+        let rel_path = path_str
+        .path()
+        .strip_prefix(&root)
+        .unwrap();
+        if rel_path.components().count() >= 2{
+            let name = rel_path
             .to_str()
             .unwrap()
             .split_once('.')
             .unwrap()
             .0;
-        names.push(name.to_owned());
+            names.push(name.to_owned());
+        }
     }
     names
 }
