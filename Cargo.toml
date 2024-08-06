@@ -29,5 +29,5 @@ grid_pathfinding_benchmark = { path = "grid_pathfinding_benchmark" }
 rand = "0.8.5"
 
 [[bench]]
-name = "single_bench"
+name = "comparison_bench"
 harness = false
