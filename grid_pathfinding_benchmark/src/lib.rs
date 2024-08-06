@@ -6,7 +6,6 @@ use serde::Deserialize;
 use std::fs::{self, File};
 use std::io::{self, BufRead};
 use std::path::Path;
-use std::time::{Duration, Instant};
 use walkdir::WalkDir;
 
 #[derive(Debug, Deserialize)]
