@@ -3,13 +3,9 @@ use grid_pathfinding::PathingGrid;
 use grid_pathfinding_benchmark::*;
 use grid_util::grid::Grid;
 
-fn dao_bench(c: &mut Criterion) {
-    for (allow_diag, pruning) in [(false, false), (true, false), (true, true)] {
-        let bench_set = if allow_diag {
-            ["dao/arena", "dao/den312d", "dao/arena2"]
-        } else {
-            ["dao/arena", "dao/den009d", "dao/den312d"]
-        };
+fn dao_bench_single(c: &mut Criterion) {
+    for (allow_diag, pruning) in [(true, false)] {
+        let bench_set = ["dao/arena"];
         for name in bench_set {
             let (bool_grid, scenarios) = get_benchmark(name.to_owned());
             let mut pathing_grid: PathingGrid =
@@ -33,5 +29,5 @@ fn dao_bench(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, dao_bench);
+criterion_group!(benches, dao_bench_single);
 criterion_main!(benches);

@@ -1,0 +1,19 @@
+[package]
+name = "grid_pathfinding_benchmark"
+version = "0.1.0"
+authors = ["Thom van der Woude <tbvanderwoude@protonmail.com>"]
+edition = "2021"
+description = "Helper crate for loading Moving AI pathfinding benchmarks"
+keywords = ["pathfinding","grid","benchmark"]
+categories = ["game-development","simulation","algorithms"]
+license = "MIT"
+repository = "https://github.com/tbvanderwoude/grid_pathfinding"
+readme = "README.md"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+grid_util = "0.1.1"
+criterion = { version = "0.4", features = ["html_reports"] }
+csv = "1.3.0"
+serde = "1.0.204"
+walkdir = "2.5.0"
