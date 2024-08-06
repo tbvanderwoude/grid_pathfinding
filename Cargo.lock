@@ -257,6 +257,7 @@ dependencies = [
  "log",
  "num-traits",
  "petgraph",
+ "rand",
 ]
 
 [[package]]

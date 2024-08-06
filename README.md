@@ -3,10 +3,10 @@
 A grid-based pathfinding system. Implements [Jump Point Search](https://en.wikipedia.org/wiki/Jump_point_search) with 
 [improved pruning rules](https://www.researchgate.net/publication/287338108_Improving_jump_point_search) for speedy pathfinding. Pre-computes
 [connected components](https://en.wikipedia.org/wiki/Component_(graph_theory))
-to avoid flood-filling behaviour if no path exists. Both [4-neighborhood](https://en.wikipedia.org/wiki/Von_Neumann_neighborhood) and [8-neighborhood](https://en.wikipedia.org/wiki/Moore_neighborhood) grids are supported and a custom variant of JPS is implemented for the 4-neighborhood. 
+to avoid flood-filling behavior if no path exists. Both [4-neighborhood](https://en.wikipedia.org/wiki/Von_Neumann_neighborhood) and [8-neighborhood](https://en.wikipedia.org/wiki/Moore_neighborhood) grids are supported and a custom variant of JPS is implemented for the 4-neighborhood. 
 
 ### Example
-Below a [simple 8-grid example](examples/simple_8.rs) is given which illustrates how to set a basic problem and find a path.
+Below a [simple 8-grid example](examples/simple_8.rs) is given, illustrating how to set a basic problem and find a path.
 ```rust,no_run
 use grid_pathfinding::PathingGrid;
 use grid_util::grid::Grid;
@@ -36,21 +36,23 @@ fn main() {
     println!("Path:");
     for p in path {
         println!("{:?}", p);
-    }
+ }
 }
 ```
 This assumes an 8-neighborhood, which is the default grid type. The same problem can be solved for a 4-neighborhood, disallowing diagonal moves, by adding the line
 ```rust,no_run
 pathing_grid.allow_diagonal_move = false;
 ```
-prior to component generation, which is done in example [simple_4](examples/simple_4.rs).
+before component generation, which is done in example [simple_4](examples/simple_4.rs).
 
 
 
 See [examples](examples/) for finding paths with multiple goals and generating waypoints instead of full paths.
 
 ### Benchmarks
-To run a set of benchmarks, use `cargo bench`. A baseline can be set using
+The system can be benchmarked using scenarios from the [Moving AI 2D pathfinding benchmarks](https://movingai.com/benchmarks/grids.html). The [grid_pathfinding_benchmark](grid_pathfinding_benchmark) utility crate provides general support for loading these files. The default benchmark executed using `cargo bench` runs three scenario sets from the [Dragon Age: Origins](https://movingai.com/benchmarks/dao/index.html): `dao/arena`, `dao/den312` and `dao/arena2` (or `dao/den009d` when using the rectilinear algorithm). Running these requires the corresponding map and scenario files to be saved in folders called `maps/dao` and `scenarios/dao`.
+
+A baseline can be set using
 ```bash
 cargo bench -- --save-baseline main
 ```
@@ -59,6 +61,10 @@ New runs can be compared to this baseline using
 cargo bench -- --baseline main
 ```
 
+### Performance
+Using an i5-6600 quad-core running at 3.3 GHz, running the `dao/arena2` set takes 134 ms using JPS allowing diagonals and with improved pruning disabled. Using default neighbor generation as in normal A* (enabled by setting `GRAPH_PRUNING = false`) makes this take 1.37 s, a factor 10 difference. As a rule, the relative difference increases as maps get larger, with the `dao/arena` set (a smaller map) taking 846 us and 1.34 ms respectively with and without pruning. 
+
+An existing C++ [JPS implementation](https://github.com/nathansttt/hog2) runs the same scenarios in about 60 ms. The fastest known solver is the [l1-path-finder](https://mikolalysenko.github.io/l1-path-finder/www/) (implemented in Javascript) which can do this in only 38 ms using A* with landmarks (for a 4-neighborhood). This indicates that there is still a lot of room for improvement in terms of search speed.
 
 ### Goal of crate
 The long-term goal of this crate is to provide a fast off-the-shelf pathfinding implementation for grids.
