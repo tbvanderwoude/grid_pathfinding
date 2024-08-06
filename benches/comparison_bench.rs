@@ -5,12 +5,7 @@ use grid_util::grid::Grid;
 
 fn dao_bench(c: &mut Criterion) {
     for (allow_diag, pruning) in [(false, false), (true, false), (true, true)] {
-        let bench_set = if allow_diag {
-            ["dao/arena", "dao/den312d", "dao/arena2"]
-        } else {
-            ["dao/arena", "dao/den009d", "dao/den312d"]
-        };
-        for name in bench_set {
+        for name in ["dao/arena", "dao/den312d", "dao/arena2"] {
             let (bool_grid, scenarios) = get_benchmark(name.to_owned());
             let mut pathing_grid: PathingGrid =
                 PathingGrid::new(bool_grid.width, bool_grid.height, true);

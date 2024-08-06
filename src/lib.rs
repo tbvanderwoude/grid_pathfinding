@@ -62,6 +62,7 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
 #[derive(Clone, Debug)]
 pub struct PathingGrid {
     pub grid: BoolGrid,
+    pub jump_point: SimpleGrid<u8>,
     pub neighbours: SimpleGrid<u8>,
     pub components: UnionFind<usize>,
     pub components_dirty: bool,
@@ -74,6 +75,7 @@ impl Default for PathingGrid {
     fn default() -> PathingGrid {
         PathingGrid {
             grid: BoolGrid::default(),
+            jump_point: SimpleGrid::default(),
             neighbours: SimpleGrid::default(),
             components: UnionFind::new(0),
             components_dirty: false,
@@ -124,11 +126,27 @@ impl PathingGrid {
     }
     fn is_forced(&self, dir: Direction, node: &Point) -> bool {
         let dir_num = dir.num();
-        if dir.diagonal() {
-            !self.indexed_neighbor(node, 3 + dir_num) || !self.indexed_neighbor(node, 5 + dir_num)
-        } else {
-            !self.indexed_neighbor(node, 2 + dir_num) || !self.indexed_neighbor(node, 6 + dir_num)
+        self.jump_point.get_point(*node) & (1 << dir_num) != 0
+    }
+
+    fn forced_mask(&self, node: &Point) -> u8 {
+        let mut forced_mask: u8 = 0;
+        for dir_num in 0..8 {
+            if dir_num % 2 == 1 {
+                if !self.indexed_neighbor(node, 3 + dir_num)
+                    || !self.indexed_neighbor(node, 5 + dir_num)
+                {
+                    forced_mask |= 1 << dir_num;
+                }
+            } else {
+                if !self.indexed_neighbor(node, 2 + dir_num)
+                    || !self.indexed_neighbor(node, 6 + dir_num)
+                {
+                    forced_mask |= 1 << dir_num;
+                }
+            };
         }
+        forced_mask
     }
 
     fn pruned_neighborhood<'a>(
@@ -467,6 +485,25 @@ impl PathingGrid {
             }
         }
     }
+    pub fn set_jumppoints(&mut self, point: Point) {
+        let value = self.forced_mask(&point);
+        self.jump_point.set_point(point, value);
+    }
+    pub fn fix_jumppoints(&mut self, point: Point) {
+        self.set_jumppoints(point);
+        for p in self.neighborhood_points(&point) {
+            if self.point_in_bounds(p) {
+                self.set_jumppoints(p);
+            }
+        }
+    }
+    pub fn set_all_jumppoints(&mut self) {
+        for x in 0..self.width() {
+            for y in 0..self.height() {
+                self.set_jumppoints(Point::new(x as i32, y as i32));
+            }
+        }
+    }
     /// Generates a new [UnionFind] structure and links up grid neighbours to the same components.
     pub fn generate_components(&mut self) {
         let w = self.grid.width;
@@ -530,6 +567,7 @@ impl Grid<bool> for PathingGrid {
     fn new(width: usize, height: usize, default_value: bool) -> Self {
         let mut base_grid = PathingGrid {
             grid: BoolGrid::new(width, height, default_value),
+            jump_point: SimpleGrid::new(width, height, 0b00000000),
             neighbours: SimpleGrid::new(width, height, 0b11111111),
             components: UnionFind::new(width * height),
             components_dirty: false,
@@ -547,6 +585,7 @@ impl Grid<bool> for PathingGrid {
             base_grid.update_neighbours(-1, j, true);
             base_grid.update_neighbours(width as i32, j, true);
         }
+        base_grid.set_all_jumppoints();
         base_grid
     }
     fn get(&self, x: usize, y: usize) -> bool {
@@ -569,6 +608,7 @@ impl Grid<bool> for PathingGrid {
         }
         self.update_neighbours(p.x, p.y, blocked);
         self.grid.set(x, y, blocked);
+        self.fix_jumppoints(p);
     }
     fn width(&self) -> usize {
         self.grid.width()
