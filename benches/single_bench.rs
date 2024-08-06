@@ -2,11 +2,6 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use grid_pathfinding::PathingGrid;
 use grid_pathfinding_benchmark::*;
 use grid_util::grid::Grid;
-use grid_util::point::Point;
-
-fn test(pathing_grid: &PathingGrid, start: Point, end: Point) -> Option<Vec<Point>> {
-    black_box(pathing_grid.get_path_single_goal(start, end, false))
-}
 
 fn dao_bench_single(c: &mut Criterion) {
     for (allow_diag, pruning) in [(true, false)] {
@@ -26,7 +21,7 @@ fn dao_bench_single(c: &mut Criterion) {
             c.bench_function(format!("{name}, {diag_str}{improved_str}").as_str(), |b| {
                 b.iter(|| {
                     for (start, end) in &scenarios {
-                        test(&pathing_grid, *start, *end);
+                        black_box(pathing_grid.get_path_single_goal(*start, *end, false));
                     }
                 })
             });
