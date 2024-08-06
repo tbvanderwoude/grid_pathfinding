@@ -17,7 +17,7 @@ use crate::astar_jps::astar_jps;
 use core::fmt;
 use std::collections::VecDeque;
 
-const EQUAL_EDGE_COST: bool = true;
+const EQUAL_EDGE_COST: bool = false;
 const GRAPH_PRUNING: bool = true;
 
 // Costs for diagonal and cardinal moves.
