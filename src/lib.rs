@@ -73,7 +73,7 @@ pub struct PathingGrid {
 
 impl Default for PathingGrid {
     fn default() -> PathingGrid {
-        PathingGrid {
+        let mut grid = PathingGrid {
             grid: BoolGrid::default(),
             jump_point: SimpleGrid::default(),
             neighbours: SimpleGrid::default(),
@@ -82,7 +82,9 @@ impl Default for PathingGrid {
             improved_pruning: true,
             heuristic_factor: 1.0,
             allow_diagonal_move: true,
-        }
+        };
+        grid.initialize();
+        grid
     }
 }
 impl PathingGrid {
@@ -497,6 +499,8 @@ impl PathingGrid {
             }
         }
     }
+    
+    /// Performs the full jump point precomputation
     pub fn set_all_jumppoints(&mut self) {
         for x in 0..self.width() {
             for y in 0..self.height() {
@@ -504,6 +508,22 @@ impl PathingGrid {
             }
         }
     }
+
+    pub fn initialize(&mut self) {
+        // Emulates 'placing' of blocked tile around map border to correctly initialize neighbours
+        // and make behaviour of a map bordered by tiles the same as a borderless map.
+        for i in -1..=(self.width() as i32) {
+            self.update_neighbours(i, -1, true);
+            self.update_neighbours(i, self.height() as i32, true);
+        }
+        for j in -1..=(self.height() as i32) {
+            self.update_neighbours(-1, j, true);
+            self.update_neighbours(self.width() as i32, j, true);
+        }
+        self.update_all_neighbours();
+        self.set_all_jumppoints();
+    }
+
     /// Generates a new [UnionFind] structure and links up grid neighbours to the same components.
     pub fn generate_components(&mut self) {
         let w = self.grid.width;
@@ -575,17 +595,7 @@ impl Grid<bool> for PathingGrid {
             heuristic_factor: 1.0,
             allow_diagonal_move: true,
         };
-        // Emulates 'placing' of blocked tile around map border to correctly initialize neighbours
-        // and make behaviour of a map bordered by tiles the same as a borderless map.
-        for i in -1..=(width as i32) {
-            base_grid.update_neighbours(i, -1, true);
-            base_grid.update_neighbours(i, height as i32, true);
-        }
-        for j in -1..=(height as i32) {
-            base_grid.update_neighbours(-1, j, true);
-            base_grid.update_neighbours(width as i32, j, true);
-        }
-        base_grid.set_all_jumppoints();
+        base_grid.initialize();
         base_grid
     }
     fn get(&self, x: usize, y: usize) -> bool {
