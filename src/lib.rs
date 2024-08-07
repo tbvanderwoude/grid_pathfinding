@@ -422,14 +422,14 @@ impl PathingGrid {
                 |parent, node| {
                     if GRAPH_PRUNING {
                         self.jps_neighbours(*parent, node, &|node_pos| {
-                            self.heuristic(node_pos, &goal) <= 1
+                            self.heuristic(node_pos, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 }
                         })
                     } else {
                         self.neighborhood_points_and_cost(node)
                     }
                 },
                 |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
-                |point| self.heuristic(point, &goal) <= 1,
+                |point| self.heuristic(point, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 },
             )
         } else {
             // Check if start and goal are on the same connected component.
