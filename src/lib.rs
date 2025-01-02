@@ -8,6 +8,7 @@
 //! [connected components](https://en.wikipedia.org/wiki/Component_(graph_theory))
 //! to avoid flood-filling behaviour if no path exists.
 mod astar_jps;
+use astar_jps::AstarContext;
 use grid_util::direction::Direction;
 use grid_util::grid::{BoolGrid, Grid, SimpleGrid};
 use grid_util::point::Point;
@@ -15,6 +16,7 @@ use petgraph::unionfind::UnionFind;
 
 use crate::astar_jps::astar_jps;
 use core::fmt;
+use std::cell::RefCell;
 use std::collections::VecDeque;
 
 const EQUAL_EDGE_COST: bool = false;
@@ -68,6 +70,7 @@ pub struct PathingGrid {
     pub heuristic_factor: f32,
     pub improved_pruning: bool,
     pub allow_diagonal_move: bool,
+    context: RefCell<AstarContext<Point, i32>>,
 }
 
 impl Default for PathingGrid {
@@ -80,6 +83,7 @@ impl Default for PathingGrid {
             improved_pruning: true,
             heuristic_factor: 1.0,
             allow_diagonal_move: true,
+            context: AstarContext::new().into(),
         }
     }
 }
@@ -382,7 +386,8 @@ impl PathingGrid {
         if goals.is_empty() {
             return None;
         }
-        let result = astar_jps(
+        let mut ct = self.context.borrow_mut();
+        let result = ct.astar_jps(
             &start,
             |parent, node| {
                 if GRAPH_PRUNING {
@@ -417,7 +422,8 @@ impl PathingGrid {
                 return None;
             }
             // A neighbour of the goal can be reached, compute a path
-            astar_jps(
+            let mut ct = self.context.borrow_mut();
+            ct.astar_jps(
                 &start,
                 |parent, node| {
                     if GRAPH_PRUNING {
@@ -437,7 +443,8 @@ impl PathingGrid {
                 return None;
             }
             // The goal is reachable from the start, compute a path
-            astar_jps(
+            let mut ct = self.context.borrow_mut();
+            ct.astar_jps(
                 &start,
                 |parent, node| {
                     if GRAPH_PRUNING {
@@ -536,6 +543,7 @@ impl Grid<bool> for PathingGrid {
             improved_pruning: true,
             heuristic_factor: 1.0,
             allow_diagonal_move: true,
+            context: AstarContext::new().into(),
         };
         // Emulates 'placing' of blocked tile around map border to correctly initialize neighbours
         // and make behaviour of a map bordered by tiles the same as a borderless map.

@@ -15,6 +15,8 @@ use std::collections::BinaryHeap;
 
 use std::hash::Hash;
 
+#[derive(Clone, Debug)]
+
 struct SmallestCostHolder<K> {
     estimated_cost: K,
     cost: K,
@@ -64,11 +66,102 @@ where
     path
 }
 
+/// Represents search fringe and parent map and reusing memory allocations between searches
+#[derive(Clone, Debug)]
+pub struct AstarContext<N, C> {
+    fringe: BinaryHeap<SmallestCostHolder<C>>,
+    parents: FxIndexMap<N, (usize, C)>,
+}
+
+impl<N, C> AstarContext<N, C>
+where
+    N: Eq + Hash + Clone,
+    C: Zero + Ord + Copy,
+{
+    pub fn new() -> AstarContext<N, C> {
+        AstarContext {
+            fringe: BinaryHeap::new(),
+            parents: FxIndexMap::default(),
+        }
+    }
+    pub fn astar_jps<FN, IN, FH, FS>(
+        &mut self,
+        start: &N,
+        mut successors: FN,
+        mut heuristic: FH,
+        mut success: FS,
+    ) -> Option<(Vec<N>, C)>
+    where
+        FN: FnMut(&Option<&N>, &N) -> IN,
+        IN: IntoIterator<Item = (N, C)>,
+        FH: FnMut(&N) -> C,
+        FS: FnMut(&N) -> bool,
+    {
+        self.fringe.clear();
+        self.parents.clear();
+        self.fringe.push(SmallestCostHolder {
+            estimated_cost: Zero::zero(),
+            cost: Zero::zero(),
+            index: 0,
+        });
+        self.parents
+            .insert(start.clone(), (usize::MAX, Zero::zero()));
+        while let Some(SmallestCostHolder { cost, index, .. }) = self.fringe.pop() {
+            let successors = {
+                let (node, &(parent_index, c)) = self.parents.get_index(index).unwrap();
+                if success(node) {
+                    let path = reverse_path(&self.parents, |&(p, _)| p, index);
+                    return Some((path, cost));
+                }
+                // We may have inserted a node several time into the binary heap if we found
+                // a better way to access it. Ensure that we are currently dealing with the
+                // best path and discard the others.
+                if cost > c {
+                    continue;
+                }
+                let optional_parent_node = self.parents.get_index(parent_index).map(|x| x.0);
+
+                successors(&optional_parent_node, node)
+            };
+            for (successor, move_cost) in successors {
+                let new_cost = cost + move_cost;
+                let h; // heuristic(&successor)
+                let n; // index for successor
+                match self.parents.entry(successor) {
+                    Vacant(e) => {
+                        h = heuristic(e.key());
+                        n = e.index();
+                        e.insert((index, new_cost));
+                    }
+                    Occupied(mut e) => {
+                        if e.get().1 > new_cost {
+                            h = heuristic(e.key());
+                            n = e.index();
+                            e.insert((index, new_cost));
+                        } else {
+                            continue;
+                        }
+                    }
+                }
+
+                self.fringe.push(SmallestCostHolder {
+                    estimated_cost: new_cost + h,
+                    cost: new_cost,
+                    index: n,
+                });
+            }
+        }
+        warn!("Reachable goal could not be pathed to, is reachable graph correct?");
+        None
+    }
+}
+
+/// Standalone astar_jps function that creates an [AstarContext] object for backward-compatibility.
 pub fn astar_jps<N, C, FN, IN, FH, FS>(
     start: &N,
-    mut successors: FN,
-    mut heuristic: FH,
-    mut success: FS,
+    successors: FN,
+    heuristic: FH,
+    success: FS,
 ) -> Option<(Vec<N>, C)>
 where
     N: Eq + Hash + Clone,
@@ -78,59 +171,6 @@ where
     FH: FnMut(&N) -> C,
     FS: FnMut(&N) -> bool,
 {
-    let mut to_see = BinaryHeap::new();
-    to_see.push(SmallestCostHolder {
-        estimated_cost: Zero::zero(),
-        cost: Zero::zero(),
-        index: 0,
-    });
-    let mut parents: FxIndexMap<N, (usize, C)> = FxIndexMap::default();
-    parents.insert(start.clone(), (usize::MAX, Zero::zero()));
-    while let Some(SmallestCostHolder { cost, index, .. }) = to_see.pop() {
-        let successors = {
-            let (node, &(parent_index, c)) = parents.get_index(index).unwrap();
-            if success(node) {
-                let path = reverse_path(&parents, |&(p, _)| p, index);
-                return Some((path, cost));
-            }
-            // We may have inserted a node several time into the binary heap if we found
-            // a better way to access it. Ensure that we are currently dealing with the
-            // best path and discard the others.
-            if cost > c {
-                continue;
-            }
-            let optional_parent_node = parents.get_index(parent_index).map(|x| x.0);
-
-            successors(&optional_parent_node, node)
-        };
-        for (successor, move_cost) in successors {
-            let new_cost = cost + move_cost;
-            let h; // heuristic(&successor)
-            let n; // index for successor
-            match parents.entry(successor) {
-                Vacant(e) => {
-                    h = heuristic(e.key());
-                    n = e.index();
-                    e.insert((index, new_cost));
-                }
-                Occupied(mut e) => {
-                    if e.get().1 > new_cost {
-                        h = heuristic(e.key());
-                        n = e.index();
-                        e.insert((index, new_cost));
-                    } else {
-                        continue;
-                    }
-                }
-            }
-
-            to_see.push(SmallestCostHolder {
-                estimated_cost: new_cost + h,
-                cost: new_cost,
-                index: n,
-            });
-        }
-    }
-    warn!("Reachable goal could not be pathed to, is reachable graph correct?");
-    None
+    let mut search = AstarContext::new();
+    search.astar_jps(start, successors, heuristic, success)
 }
