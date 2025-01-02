@@ -22,6 +22,7 @@ use std::collections::VecDeque;
 
 const EQUAL_EDGE_COST: bool = false;
 const GRAPH_PRUNING: bool = true;
+const N_SMALLVEC_SIZE: usize = 8;
 
 // Costs for diagonal and cardinal moves.
 // Values for unequal costs approximating a ratio D/C of sqrt(2) are from
@@ -96,13 +97,13 @@ impl PathingGrid {
             point.neumann_neighborhood()
         }
     }
-    fn neighborhood_points_and_cost(&self, pos: &Point) -> SmallVec<[(Point, i32); 8]> {
+    fn neighborhood_points_and_cost(&self, pos: &Point) -> SmallVec<[(Point, i32); N_SMALLVEC_SIZE]> {
         self.neighborhood_points(pos)
             .into_iter()
             .filter(|p| self.can_move_to(*p))
             // See comment in pruned_neighborhood about cost calculation
             .map(move |p| (p, (pos.dir_obj(&p).num() % 2) * (D - C) + C))
-            .collect::<SmallVec<[_; 8]>>()
+            .collect::<SmallVec<[_; N_SMALLVEC_SIZE]>>()
     }
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
     pub fn heuristic(&self, p1: &Point, p2: &Point) -> i32 {
@@ -272,7 +273,7 @@ impl PathingGrid {
         parent: Option<&Point>,
         node: &Point,
         goal: &F,
-    ) -> SmallVec<[(Point, i32); 8]>
+    ) -> SmallVec<[(Point, i32); N_SMALLVEC_SIZE]>
     where
         F: Fn(&Point) -> bool,
     {
