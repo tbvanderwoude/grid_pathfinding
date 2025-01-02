@@ -13,6 +13,7 @@ use grid_util::direction::Direction;
 use grid_util::grid::{BoolGrid, Grid, SimpleGrid};
 use grid_util::point::Point;
 use petgraph::unionfind::UnionFind;
+use smallvec::{smallvec, SmallVec};
 
 use crate::astar_jps::astar_jps;
 use core::fmt;
@@ -95,13 +96,13 @@ impl PathingGrid {
             point.neumann_neighborhood()
         }
     }
-    fn neighborhood_points_and_cost(&self, pos: &Point) -> Vec<(Point, i32)> {
+    fn neighborhood_points_and_cost(&self, pos: &Point) -> SmallVec<[(Point, i32); 8]> {
         self.neighborhood_points(pos)
             .into_iter()
             .filter(|p| self.can_move_to(*p))
             // See comment in pruned_neighborhood about cost calculation
             .map(move |p| (p, (pos.dir_obj(&p).num() % 2) * (D - C) + C))
-            .collect::<Vec<_>>()
+            .collect::<SmallVec<[_; 8]>>()
     }
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
     pub fn heuristic(&self, p1: &Point, p2: &Point) -> i32 {
@@ -266,13 +267,18 @@ impl PathingGrid {
             }
         }
     }
-    fn jps_neighbours<F>(&self, parent: Option<&Point>, node: &Point, goal: &F) -> Vec<(Point, i32)>
+    fn jps_neighbours<F>(
+        &self,
+        parent: Option<&Point>,
+        node: &Point,
+        goal: &F,
+    ) -> SmallVec<[(Point, i32); 8]>
     where
         F: Fn(&Point) -> bool,
     {
         match parent {
             Some(parent_node) => {
-                let mut succ = vec![];
+                let mut succ = SmallVec::new();
                 let dir = parent_node.dir_obj(node);
                 for (n, c) in self.pruned_neighborhood(dir, node) {
                     let dir = node.dir_obj(&n);
@@ -386,7 +392,7 @@ impl PathingGrid {
         if goals.is_empty() {
             return None;
         }
-        let mut ct = self.context.borrow_mut();
+        let mut ct: std::cell::RefMut<'_, AstarContext<Point, i32>> = self.context.borrow_mut();
         let result = ct.astar_jps(
             &start,
             |parent, node| {
