@@ -9,16 +9,14 @@
 //! to avoid flood-filling behaviour if no path exists.
 mod astar_jps;
 use astar_jps::AstarContext;
+use core::fmt;
 use grid_util::direction::Direction;
 use grid_util::grid::{BoolGrid, Grid, SimpleGrid};
 use grid_util::point::Point;
 use petgraph::unionfind::UnionFind;
-use smallvec::{smallvec, SmallVec};
-
-use crate::astar_jps::astar_jps;
-use core::fmt;
-use std::cell::RefCell;
+use smallvec::SmallVec;
 use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
 
 const EQUAL_EDGE_COST: bool = false;
 const GRAPH_PRUNING: bool = true;
@@ -73,7 +71,7 @@ pub struct PathingGrid {
     pub heuristic_factor: f32,
     pub improved_pruning: bool,
     pub allow_diagonal_move: bool,
-    context: RefCell<AstarContext<Point, i32>>,
+    context: Arc<Mutex<AstarContext<Point, i32>>>,
 }
 
 impl Default for PathingGrid {
@@ -87,7 +85,7 @@ impl Default for PathingGrid {
             improved_pruning: true,
             heuristic_factor: 1.0,
             allow_diagonal_move: true,
-            context: AstarContext::new().into(),
+            context: Arc::new(Mutex::new(AstarContext::new())),
         };
         grid.initialize();
         grid
@@ -416,7 +414,7 @@ impl PathingGrid {
         if goals.is_empty() {
             return None;
         }
-        let mut ct = self.context.borrow_mut();
+        let mut ct = self.context.lock().unwrap();
         let result = ct.astar_jps(
             &start,
             |parent, node| {
@@ -452,7 +450,7 @@ impl PathingGrid {
                 return None;
             }
             // A neighbour of the goal can be reached, compute a path
-            let mut ct = self.context.borrow_mut();
+            let mut ct = self.context.lock().unwrap();
             ct.astar_jps(
                 &start,
                 |parent, node| {
@@ -473,7 +471,7 @@ impl PathingGrid {
                 return None;
             }
             // The goal is reachable from the start, compute a path
-            let mut ct = self.context.borrow_mut();
+            let mut ct = self.context.lock().unwrap();
             ct.astar_jps(
                 &start,
                 |parent, node| {
@@ -611,7 +609,7 @@ impl Grid<bool> for PathingGrid {
             improved_pruning: true,
             heuristic_factor: 1.0,
             allow_diagonal_move: true,
-            context: AstarContext::new().into(),
+            context: Arc::new(Mutex::new(AstarContext::new())),
         };
         base_grid.initialize();
         base_grid
