@@ -4,7 +4,7 @@ use grid_pathfinding_benchmark::*;
 use grid_util::grid::Grid;
 
 fn dao_bench(c: &mut Criterion) {
-    for (allow_diag, pruning) in [(false, false), (true, false), (true, true)] {
+    for (allow_diag, pruning) in [(true, false), (true, true)] {
         let bench_set = if allow_diag {
             ["dao/arena", "dao/den312d", "dao/arena2"]
         } else {
