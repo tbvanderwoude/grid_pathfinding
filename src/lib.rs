@@ -8,17 +8,21 @@
 //! [connected components](https://en.wikipedia.org/wiki/Component_(graph_theory))
 //! to avoid flood-filling behaviour if no path exists.
 mod astar_jps;
+use astar_jps::AstarContext;
 use grid_util::direction::Direction;
 use grid_util::grid::{BoolGrid, Grid, SimpleGrid};
 use grid_util::point::Point;
 use petgraph::unionfind::UnionFind;
+use smallvec::{smallvec, SmallVec};
 
 use crate::astar_jps::astar_jps;
 use core::fmt;
+use std::cell::RefCell;
 use std::collections::VecDeque;
 
 const EQUAL_EDGE_COST: bool = false;
 const GRAPH_PRUNING: bool = true;
+const N_SMALLVEC_SIZE: usize = 8;
 
 // Costs for diagonal and cardinal moves.
 // Values for unequal costs approximating a ratio D/C of sqrt(2) are from
@@ -69,6 +73,7 @@ pub struct PathingGrid {
     pub heuristic_factor: f32,
     pub improved_pruning: bool,
     pub allow_diagonal_move: bool,
+    context: RefCell<AstarContext<Point, i32>>,
 }
 
 impl Default for PathingGrid {
@@ -82,6 +87,7 @@ impl Default for PathingGrid {
             improved_pruning: true,
             heuristic_factor: 1.0,
             allow_diagonal_move: true,
+            context: AstarContext::new().into(),
         };
         grid.initialize();
         grid
@@ -95,13 +101,16 @@ impl PathingGrid {
             point.neumann_neighborhood()
         }
     }
-    fn neighborhood_points_and_cost(&self, pos: &Point) -> Vec<(Point, i32)> {
+    fn neighborhood_points_and_cost(
+        &self,
+        pos: &Point,
+    ) -> SmallVec<[(Point, i32); N_SMALLVEC_SIZE]> {
         self.neighborhood_points(pos)
             .into_iter()
             .filter(|p| self.can_move_to(*p))
             // See comment in pruned_neighborhood about cost calculation
             .map(move |p| (p, (pos.dir_obj(&p).num() % 2) * (D - C) + C))
-            .collect::<Vec<_>>()
+            .collect::<SmallVec<[_; N_SMALLVEC_SIZE]>>()
     }
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
     pub fn heuristic(&self, p1: &Point, p2: &Point) -> i32 {
@@ -282,13 +291,18 @@ impl PathingGrid {
             }
         }
     }
-    fn jps_neighbours<F>(&self, parent: Option<&Point>, node: &Point, goal: &F) -> Vec<(Point, i32)>
+    fn jps_neighbours<F>(
+        &self,
+        parent: Option<&Point>,
+        node: &Point,
+        goal: &F,
+    ) -> SmallVec<[(Point, i32); N_SMALLVEC_SIZE]>
     where
         F: Fn(&Point) -> bool,
     {
         match parent {
             Some(parent_node) => {
-                let mut succ = vec![];
+                let mut succ = SmallVec::new();
                 let dir = parent_node.dir_obj(node);
                 for (n, c) in self.pruned_neighborhood(dir, node) {
                     let dir = node.dir_obj(&n);
@@ -402,7 +416,8 @@ impl PathingGrid {
         if goals.is_empty() {
             return None;
         }
-        let result = astar_jps(
+        let mut ct = self.context.borrow_mut();
+        let result = ct.astar_jps(
             &start,
             |parent, node| {
                 if GRAPH_PRUNING {
@@ -437,7 +452,8 @@ impl PathingGrid {
                 return None;
             }
             // A neighbour of the goal can be reached, compute a path
-            astar_jps(
+            let mut ct = self.context.borrow_mut();
+            ct.astar_jps(
                 &start,
                 |parent, node| {
                     if GRAPH_PRUNING {
@@ -457,7 +473,8 @@ impl PathingGrid {
                 return None;
             }
             // The goal is reachable from the start, compute a path
-            astar_jps(
+            let mut ct = self.context.borrow_mut();
+            ct.astar_jps(
                 &start,
                 |parent, node| {
                     if GRAPH_PRUNING {
@@ -499,7 +516,7 @@ impl PathingGrid {
             }
         }
     }
-    
+
     /// Performs the full jump point precomputation
     pub fn set_all_jumppoints(&mut self) {
         for x in 0..self.width() {
@@ -594,6 +611,7 @@ impl Grid<bool> for PathingGrid {
             improved_pruning: true,
             heuristic_factor: 1.0,
             allow_diagonal_move: true,
+            context: AstarContext::new().into(),
         };
         base_grid.initialize();
         base_grid
