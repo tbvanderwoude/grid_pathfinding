@@ -97,7 +97,10 @@ impl PathingGrid {
             point.neumann_neighborhood()
         }
     }
-    fn neighborhood_points_and_cost(&self, pos: &Point) -> SmallVec<[(Point, i32); N_SMALLVEC_SIZE]> {
+    fn neighborhood_points_and_cost(
+        &self,
+        pos: &Point,
+    ) -> SmallVec<[(Point, i32); N_SMALLVEC_SIZE]> {
         self.neighborhood_points(pos)
             .into_iter()
             .filter(|p| self.can_move_to(*p))
@@ -393,7 +396,7 @@ impl PathingGrid {
         if goals.is_empty() {
             return None;
         }
-        let mut ct: std::cell::RefMut<'_, AstarContext<Point, i32>> = self.context.borrow_mut();
+        let mut ct = self.context.borrow_mut();
         let result = ct.astar_jps(
             &start,
             |parent, node| {

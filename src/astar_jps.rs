@@ -17,27 +17,27 @@ use std::hash::Hash;
 
 #[derive(Clone, Debug)]
 
-struct SmallestCostHolder<K> {
+struct SearchNode<K> {
     estimated_cost: K,
     cost: K,
     index: usize,
 }
 
-impl<K: PartialEq> Eq for SmallestCostHolder<K> {}
+impl<K: PartialEq> Eq for SearchNode<K> {}
 
-impl<K: PartialEq> PartialEq for SmallestCostHolder<K> {
+impl<K: PartialEq> PartialEq for SearchNode<K> {
     fn eq(&self, other: &Self) -> bool {
         self.estimated_cost.eq(&other.estimated_cost) && self.cost.eq(&other.cost)
     }
 }
 
-impl<K: Ord> PartialOrd for SmallestCostHolder<K> {
+impl<K: Ord> PartialOrd for SearchNode<K> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<K: Ord> Ord for SmallestCostHolder<K> {
+impl<K: Ord> Ord for SearchNode<K> {
     fn cmp(&self, other: &Self) -> Ordering {
         // First orders per estimated cost, then creates subordering
         // based on cost, favoring exploration of smallest cost nodes first
@@ -66,10 +66,10 @@ where
     path
 }
 
-/// Represents search fringe and parent map and reusing memory allocations between searches
+/// [AstarContext] represents the search fringe and node parent map, facilitating reuse of memory allocations.
 #[derive(Clone, Debug)]
 pub struct AstarContext<N, C> {
-    fringe: BinaryHeap<SmallestCostHolder<C>>,
+    fringe: BinaryHeap<SearchNode<C>>,
     parents: FxIndexMap<N, (usize, C)>,
 }
 
@@ -99,14 +99,14 @@ where
     {
         self.fringe.clear();
         self.parents.clear();
-        self.fringe.push(SmallestCostHolder {
+        self.fringe.push(SearchNode {
             estimated_cost: Zero::zero(),
             cost: Zero::zero(),
             index: 0,
         });
         self.parents
             .insert(start.clone(), (usize::MAX, Zero::zero()));
-        while let Some(SmallestCostHolder { cost, index, .. }) = self.fringe.pop() {
+        while let Some(SearchNode { cost, index, .. }) = self.fringe.pop() {
             let successors = {
                 let (node, &(parent_index, c)) = self.parents.get_index(index).unwrap();
                 if success(node) {
@@ -144,7 +144,7 @@ where
                     }
                 }
 
-                self.fringe.push(SmallestCostHolder {
+                self.fringe.push(SearchNode {
                     estimated_cost: new_cost + h,
                     cost: new_cost,
                     index: n,
