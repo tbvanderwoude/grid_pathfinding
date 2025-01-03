@@ -62,7 +62,8 @@ cargo bench -- --baseline main
 ```
 
 ### Performance
-Using an i5-6600 quad-core running at 3.3 GHz, running the `dao/arena2` set of 910 scenarios on a 281x209 grid takes 13 ms using JPS allowing diagonals and with improved pruning disabled. Using default neighbor generation as in normal A* (enabled by setting `GRAPH_PRUNING = false`) makes this take 1.37 s, a factor 100 difference. As a rule, the relative difference increases as maps get larger, with the `dao/arena` set (a smaller map) taking 768 us and 1.34 ms respectively with and without pruning. Without diagonals, running `dao/arena2` takes 89 ms with pruning and 727 ms without. 
+Using an i5-6600 quad-core running at 3.3 GHz, running the `dao/arena2` set of 910 scenarios on a 281x209 grid takes 114 ms using JPS allowing diagonals and with improved pruning disabled. Using default neighbor generation as in normal A* (enabled by setting `GRAPH_PRUNING = false`) makes this take 1.21 s, a factor 10 difference. As a rule, the relative difference increases as maps get larger, with the `dao/arena` set of 130 scenarios on a 49x49 grid taking 673 us and 952 us respectively with and without pruning. 
+
 
 An existing C++ [JPS implementation](https://github.com/nathansttt/hog2) runs the same scenarios in about 60 ms. The fastest solver known to the author is the [l1-path-finder](https://mikolalysenko.github.io/l1-path-finder/www/) (implemented in Javascript) which can do this in 38 ms using A* with landmarks (for a 4-neighborhood).
 
