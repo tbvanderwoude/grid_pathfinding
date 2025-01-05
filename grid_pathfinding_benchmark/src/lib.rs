@@ -1,5 +1,5 @@
 use csv::ReaderBuilder;
-use grid_util::grid::Grid;
+use grid_util::grid::ValueGrid;
 use grid_util::point::Point;
 use grid_util::BoolGrid;
 use serde::Deserialize;
@@ -69,10 +69,10 @@ fn load_benchmark(name: &str) -> (BoolGrid, Vec<(Point, Point)>) {
 
     let offset = 4;
     let mut bool_grid: BoolGrid = BoolGrid::new(w, h, false);
-    for y in 0..bool_grid.height() {
-        for x in 0..bool_grid.width() {
+    for y in 0..bool_grid.height() as i32 {
+        for x in 0..bool_grid.width() as i32 {
             // Not sure why x, y have to be swapped here...
-            let tile_val = lines[offset + x].as_bytes()[y];
+            let tile_val = lines[offset + x as usize].as_bytes()[y as usize];
             let val = ![b'.', b'G'].contains(&tile_val);
             bool_grid.set(x, y, val);
         }

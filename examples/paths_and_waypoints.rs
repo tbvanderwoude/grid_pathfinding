@@ -1,5 +1,5 @@
 use grid_pathfinding::{waypoints_to_path, PathingGrid};
-use grid_util::grid::Grid;
+use grid_util::grid::ValueGrid;
 use grid_util::point::Point;
 
 // This example illustrates the difference between waypoints and paths.

@@ -8,8 +8,8 @@ fn random_grid(n: usize, rng: &mut StdRng, diagonal: bool, improved_pruning: boo
     let mut pathing_grid: PathingGrid = PathingGrid::new(n, n, false);
     pathing_grid.allow_diagonal_move = diagonal;
     pathing_grid.improved_pruning = improved_pruning;
-    for x in 0..pathing_grid.width() {
-        for y in 0..pathing_grid.height() {
+    for x in 0..pathing_grid.width() as i32 {
+        for y in 0..pathing_grid.height() as i32 {
             pathing_grid.set(x, y, rng.gen_bool(0.4))
         }
     }
@@ -19,9 +19,9 @@ fn random_grid(n: usize, rng: &mut StdRng, diagonal: bool, improved_pruning: boo
 
 fn visualize_grid(grid: &PathingGrid, start: &Point, end: &Point) {
     let grid = &grid.grid;
-    for y in (0..grid.height).rev() {
-        for x in 0..grid.width {
-            let p = Point::new(x as i32, y as i32);
+    for y in (0..grid.height as i32).rev() {
+        for x in 0..grid.width as i32 {
+            let p = Point::new(x, y);
             if *start == p {
                 print!("S");
             } else if *end == p {

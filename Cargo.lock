@@ -275,8 +275,7 @@ dependencies = [
 [[package]]
 name = "grid_util"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b7f09fe015ff50963bc5b9810f73e54d69c8770b1986f3c8c475ba04a347662"
+source = "git+https://github.com/tbvanderwoude/grid_util.git#cf1a6343879b101a83daca396fa47c8c1b742db5"
 dependencies = [
  "num_enum",
  "rand",
