@@ -19,6 +19,7 @@ use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
 const EQUAL_EDGE_COST: bool = false;
+const ALLOW_CORNER_CUTTING: bool = false;
 const GRAPH_PRUNING: bool = true;
 const N_SMALLVEC_SIZE: usize = 8;
 
@@ -110,7 +111,7 @@ impl PathingGrid {
     ) -> SmallVec<[(Point, i32); N_SMALLVEC_SIZE]> {
         self.neighborhood_points(pos)
             .into_iter()
-            .filter(|p| self.can_move_to(*p))
+            .filter(|p| self.can_move_to(*p, *pos))
             // See comment in pruned_neighborhood about cost calculation
             .map(move |p| (p, (pos.dir_obj(&p).num() % 2) * (D - C) + C))
             .collect::<SmallVec<[_; N_SMALLVEC_SIZE]>>()
@@ -128,7 +129,17 @@ impl PathingGrid {
             p1.manhattan_distance(p2) * C
         }
     }
-    fn can_move_to(&self, pos: Point) -> bool {
+    fn can_move_to(&self, pos: Point, start: Point) -> bool {
+        if ALLOW_CORNER_CUTTING {
+            self.can_move_to_simple(pos)
+        } else {
+            debug_assert!((start.x - pos.x).abs() <= 1 && (start.y - pos.y).abs() <= 1);
+            self.can_move_to_simple(pos)
+                && (!self.grid.get_point(Point::new(start.x, pos.y))
+                    && !self.grid.get_point(Point::new(pos.x, start.y)))
+        }
+    }
+    fn can_move_to_simple(&self, pos: Point) -> bool {
         self.point_in_bounds(pos) && !self.grid.get_point(pos)
     }
     fn in_bounds(&self, x: i32, y: i32) -> bool {
