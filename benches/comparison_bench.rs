@@ -17,7 +17,7 @@ fn dao_bench(c: &mut Criterion) {
             pathing_grid.grid = bool_grid.clone();
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
-            pathing_grid.update_all_neighbours();
+            pathing_grid.initialize();
             pathing_grid.generate_components();
             let diag_str = if allow_diag { "8-grid" } else { "4-grid" };
             let improved_str = if pruning { " (improved pruning)" } else { "" };

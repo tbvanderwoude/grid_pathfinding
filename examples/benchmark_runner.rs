@@ -18,7 +18,7 @@ fn main() {
             pathing_grid.grid = bool_grid.clone();
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
-            pathing_grid.update_all_neighbours();
+            pathing_grid.initialize();
             pathing_grid.generate_components();
             let number_of_scenarios = scenarios.len() as u32;
             let before = Instant::now();
