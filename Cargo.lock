@@ -373,6 +373,7 @@ dependencies = [
  "rand_derive2",
  "ron",
  "serde",
+ "smallvec",
  "strum",
  "strum_macros",
 ]

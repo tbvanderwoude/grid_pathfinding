@@ -92,11 +92,11 @@ impl Default for PathingGrid {
     }
 }
 impl PathingGrid {
-    fn neighborhood_points(&self, point: &Point) -> Vec<Point> {
+    fn neighborhood_points(&self, point: &Point) -> SmallVec<[Point; 8]> {
         if self.allow_diagonal_move {
-            point.moore_neighborhood()
+            point.moore_neighborhood_smallvec()
         } else {
-            point.neumann_neighborhood()
+            point.neumann_neighborhood_smallvec()
         }
     }
     fn neighborhood_points_and_cost(

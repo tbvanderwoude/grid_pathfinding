@@ -16,7 +16,7 @@ petgraph = "0.8"
 indexmap = "2.3"
 fxhash = "0.2"
 num-traits = "0.2"
-grid_util = "0.2"
+grid_util = { version = "0.2", features = ["smallvec"]}
 log = "0.4"
 smallvec = "1.13.2"
 
