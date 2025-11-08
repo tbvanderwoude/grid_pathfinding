@@ -226,7 +226,7 @@ impl PathingGrid {
         debug_assert!(!direction.diagonal());
         loop {
             initial = initial + direction;
-            if !self.can_move_to(initial) {
+            if !self.can_move_to_simple(initial) {
                 return None;
             }
 
@@ -250,11 +250,13 @@ impl PathingGrid {
     where
         F: Fn(&Point) -> bool,
     {
+        let mut new_initial: Point;
         loop {
-            initial = initial + direction;
-            if !self.can_move_to(initial) {
+            new_initial = initial + direction;
+            if !self.can_move_to(new_initial, initial) {
                 return None;
             }
+            initial = new_initial;
 
             if goal(&initial) || self.is_forced(direction, &initial) {
                 return Some((initial, cost));
@@ -641,9 +643,9 @@ impl ValueGrid<bool> for PathingGrid {
             self.components_dirty = true;
         } else {
             let p_ix = self.grid.compute_ix(x, y);
-            for p in self.neighborhood_points(&p) {
-                if self.can_move_to(p) {
-                    self.components.union(p_ix, self.grid.get_ix_point(&p));
+            for n in self.neighborhood_points(&p) {
+                if self.can_move_to(n, p) {
+                    self.components.union(p_ix, self.grid.get_ix_point(&n));
                 }
             }
         }
