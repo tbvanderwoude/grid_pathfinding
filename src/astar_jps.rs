@@ -55,13 +55,15 @@ where
     N: Eq + Hash + Clone,
     F: FnMut(&V) -> usize,
 {
-    let mut path: Vec<N> = itertools::unfold(start, |i| {
-        parents.get_index(*i).map(|(node, value)| {
-            *i = parent(value);
+    let mut i = start;
+    let mut path: Vec<N> = std::iter::from_fn(move || {
+        parents.get_index(i).map(|(node, value)| {
+            i = parent(value);
             node.clone()
         })
     })
     .collect();
+
     path.reverse();
     path
 }
