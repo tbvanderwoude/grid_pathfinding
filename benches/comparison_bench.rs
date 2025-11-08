@@ -1,7 +1,8 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use grid_pathfinding::PathingGrid;
 use grid_pathfinding_benchmark::*;
-use grid_util::grid::Grid;
+use grid_util::grid::ValueGrid;
+use std::hint::black_box;
 
 fn dao_bench(c: &mut Criterion) {
     for (allow_diag, pruning) in [(true, false), (true, true)] {

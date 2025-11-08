@@ -11,7 +11,7 @@ mod astar_jps;
 use astar_jps::AstarContext;
 use core::fmt;
 use grid_util::direction::Direction;
-use grid_util::grid::{BoolGrid, Grid, SimpleGrid};
+use grid_util::grid::{BoolGrid, SimpleValueGrid, ValueGrid};
 use grid_util::point::Point;
 use petgraph::unionfind::UnionFind;
 use smallvec::SmallVec;
@@ -64,8 +64,8 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
 #[derive(Clone, Debug)]
 pub struct PathingGrid {
     pub grid: BoolGrid,
-    pub jump_point: SimpleGrid<u8>,
-    pub neighbours: SimpleGrid<u8>,
+    pub neighbours: SimpleValueGrid<u8>,
+    pub jump_point: SimpleValueGrid<u8>,
     pub components: UnionFind<usize>,
     pub components_dirty: bool,
     pub heuristic_factor: f32,
@@ -78,8 +78,8 @@ impl Default for PathingGrid {
     fn default() -> PathingGrid {
         let mut grid = PathingGrid {
             grid: BoolGrid::default(),
-            jump_point: SimpleGrid::default(),
-            neighbours: SimpleGrid::default(),
+            neighbours: SimpleValueGrid::default(),
+            jump_point: SimpleValueGrid::default(),
             components: UnionFind::new(0),
             components_dirty: false,
             improved_pruning: true,
@@ -92,11 +92,11 @@ impl Default for PathingGrid {
     }
 }
 impl PathingGrid {
-    fn neighborhood_points(&self, point: &Point) -> Vec<Point> {
+    fn neighborhood_points(&self, point: &Point) -> SmallVec<[Point; 8]> {
         if self.allow_diagonal_move {
-            point.moore_neighborhood()
+            point.moore_neighborhood_smallvec()
         } else {
-            point.neumann_neighborhood()
+            point.neumann_neighborhood_smallvec()
         }
     }
     fn neighborhood_points_and_cost(
@@ -124,10 +124,10 @@ impl PathingGrid {
         }
     }
     fn can_move_to(&self, pos: Point) -> bool {
-        self.in_bounds(pos.x, pos.y) && !self.grid.get(pos.x as usize, pos.y as usize)
+        self.point_in_bounds(pos) && !self.grid.get_point(pos)
     }
     fn in_bounds(&self, x: i32, y: i32) -> bool {
-        x >= 0 && y >= 0 && self.grid.index_in_bounds(x as usize, y as usize)
+        self.grid.index_in_bounds(x, y)
     }
     /// The neighbour indexing used here corresponds to that used in [grid_util::Direction].
     fn indexed_neighbor(&self, node: &Point, index: i32) -> bool {
@@ -496,9 +496,9 @@ impl PathingGrid {
     }
 
     pub fn update_all_neighbours(&mut self) {
-        for x in 0..self.width() {
-            for y in 0..self.height() {
-                self.update_neighbours(x as i32, y as i32, self.get(x, y));
+        for x in 0..self.width() as i32 {
+            for y in 0..self.height() as i32 {
+                self.update_neighbours(x, y, self.get(x, y));
             }
         }
     }
@@ -545,11 +545,11 @@ impl PathingGrid {
         let h = self.grid.height;
         self.components = UnionFind::new(w * h);
         self.components_dirty = false;
-        for x in 0..w {
-            for y in 0..h {
+        for x in 0..w as i32 {
+            for y in 0..h as i32 {
                 if !self.grid.get(x, y) {
-                    let parent_ix = self.grid.get_ix(x, y);
-                    let point = Point::new(x as i32, y as i32);
+                    let point = Point::new(x, y);
+                    let parent_ix = self.grid.get_ix_point(&point);
 
                     if self.allow_diagonal_move {
                         vec![
@@ -570,7 +570,7 @@ impl PathingGrid {
                     .into_iter()
                     .filter(|p| self.grid.point_in_bounds(*p) && !self.grid.get_point(*p))
                     .for_each(|p| {
-                        let ix = self.grid.get_ix(p.x as usize, p.y as usize);
+                        let ix = self.grid.get_ix_point(&p);
                         self.components.union(parent_ix, ix);
                     });
                 }
@@ -581,15 +581,15 @@ impl PathingGrid {
 impl fmt::Display for PathingGrid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Grid:")?;
-        for y in 0..self.grid.height {
-            let values = (0..self.grid.width)
+        for y in 0..self.grid.height as i32 {
+            let values = (0..self.grid.width as i32)
                 .map(|x| self.grid.get(x, y) as i32)
                 .collect::<Vec<i32>>();
             writeln!(f, "{:?}", values)?;
         }
         writeln!(f, "\nNeighbours:")?;
-        for y in 0..self.neighbours.height {
-            let values = (0..self.neighbours.width)
+        for y in 0..self.neighbours.height as i32 {
+            let values = (0..self.neighbours.width as i32)
                 .map(|x| self.neighbours.get(x, y) as i32)
                 .collect::<Vec<i32>>();
             writeln!(f, "{:?}", values)?;
@@ -598,12 +598,12 @@ impl fmt::Display for PathingGrid {
     }
 }
 
-impl Grid<bool> for PathingGrid {
+impl ValueGrid<bool> for PathingGrid {
     fn new(width: usize, height: usize, default_value: bool) -> Self {
         let mut base_grid = PathingGrid {
             grid: BoolGrid::new(width, height, default_value),
-            jump_point: SimpleGrid::new(width, height, 0b00000000),
-            neighbours: SimpleGrid::new(width, height, 0b11111111),
+            jump_point: SimpleValueGrid::new(width, height, 0b00000000),
+            neighbours: SimpleValueGrid::new(width, height, 0b11111111),
             components: UnionFind::new(width * height),
             components_dirty: false,
             improved_pruning: true,
@@ -614,21 +614,20 @@ impl Grid<bool> for PathingGrid {
         base_grid.initialize();
         base_grid
     }
-    fn get(&self, x: usize, y: usize) -> bool {
+    fn get(&self, x: i32, y: i32) -> bool {
         self.grid.get(x, y)
     }
     /// Updates a position on the grid. Joins newly connected components and flags the components
     /// as dirty if components are (potentially) broken apart into multiple.
-    fn set(&mut self, x: usize, y: usize, blocked: bool) {
-        let p = Point::new(x as i32, y as i32);
+    fn set(&mut self, x: i32, y: i32, blocked: bool) {
+        let p = Point::new(x, y);
         if self.grid.get(x, y) != blocked && blocked {
             self.components_dirty = true;
         } else {
-            let p_ix = self.grid.get_ix(x, y);
+            let p_ix = self.grid.compute_ix(x, y);
             for p in self.neighborhood_points(&p) {
                 if self.can_move_to(p) {
-                    self.components
-                        .union(p_ix, self.grid.get_ix(p.x as usize, p.y as usize));
+                    self.components.union(p_ix, self.grid.get_ix_point(&p));
                 }
             }
         }
@@ -772,10 +771,10 @@ mod tests {
             [(false, false, 15), (true, false, 10), (true, true, 10)]
         {
             let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
-            pathing_grid.set_rectangle(&Rect::new(1, 1, 2, 2), true);
-            pathing_grid.set_rectangle(&Rect::new(5, 0, 2, 2), true);
-            pathing_grid.set_rectangle(&Rect::new(0, 5, 2, 2), true);
-            pathing_grid.set_rectangle(&Rect::new(8, 8, 2, 2), true);
+            pathing_grid.set_rect(Rect::new(1, 1, 1, 1), true);
+            pathing_grid.set_rect(Rect::new(5, 0, 1, 1), true);
+            pathing_grid.set_rect(Rect::new(0, 5, 1, 1), true);
+            pathing_grid.set_rect(Rect::new(8, 8, 1, 1), true);
             // pathing_grid.improved_pruning = false;
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
@@ -794,10 +793,10 @@ mod tests {
             [(false, false, 11), (true, false, 7), (true, true, 5)]
         {
             let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
-            pathing_grid.set_rectangle(&Rect::new(1, 1, 2, 2), true);
-            pathing_grid.set_rectangle(&Rect::new(5, 0, 2, 2), true);
-            pathing_grid.set_rectangle(&Rect::new(0, 5, 2, 2), true);
-            pathing_grid.set_rectangle(&Rect::new(8, 8, 2, 2), true);
+            pathing_grid.set_rect(Rect::new(1, 1, 1, 1), true);
+            pathing_grid.set_rect(Rect::new(5, 0, 1, 1), true);
+            pathing_grid.set_rect(Rect::new(0, 5, 1, 1), true);
+            pathing_grid.set_rect(Rect::new(8, 8, 1, 1), true);
             // pathing_grid.improved_pruning = false;
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
