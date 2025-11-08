@@ -50,7 +50,7 @@ before component generation, which is done in example [simple_4](examples/simple
 See [examples](examples/) for finding paths with multiple goals and generating waypoints instead of full paths.
 
 ### Benchmarks
-The system can be benchmarked using scenarios from the [Moving AI 2D pathfinding benchmarks](https://movingai.com/benchmarks/grids.html). The [grid_pathfinding_benchmark](grid_pathfinding_benchmark) utility crate provides general support for loading these files. The default benchmark executed using `cargo bench` runs three scenario sets from the [Dragon Age: Origins](https://movingai.com/benchmarks/dao/index.html): `dao/arena`, `dao/den312` and `dao/arena2` (or `dao/den009d` when using the rectilinear algorithm). Running these requires the corresponding map and scenario files to be saved in folders called `maps/dao` and `scenarios/dao`.
+The system can be benchmarked using scenarios from the [Moving AI 2D pathfinding benchmarks](https://movingai.com/benchmarks/grids.html). The [grid_pathfinding_benchmark](grid_pathfinding_benchmark) utility crate provides general support for loading these files. The default benchmark executed using `cargo bench` runs three scenario sets from the [Dragon Age: Origins](https://movingai.com/benchmarks/dao/index.html): `dao/arena`, `dao/den312` and `dao/arena2`. Running these requires the corresponding map and scenario files to be saved in folders called `maps/dao` and `scenarios/dao`.
 
 A baseline can be set using
 ```bash
@@ -62,11 +62,10 @@ cargo bench -- --baseline main
 ```
 
 ### Performance
-Using an i5-6600 quad-core running at 3.3 GHz, running the `dao/arena2` set of 910 scenarios on a 281x209 grid takes 123 ms using JPS allowing diagonals and with improved pruning disabled. Using default neighbor generation as in normal A* (enabled by setting `GRAPH_PRUNING = false`) makes this take 1.26 s, a factor 10 difference. As a rule, the relative difference increases as maps get larger, with the `dao/arena` set of 130 scenarios on a 49x49 grid taking 721 us and 1.01 ms respectively with and without pruning. 
+Using an i5-6600 quad-core running at 3.3 GHz, running the `dao/arena2` set of 910 scenarios on a 281x209 grid takes 114 ms using JPS allowing diagonals and with improved pruning disabled. Using default neighbor generation as in normal A* (enabled by setting `GRAPH_PRUNING = false`) makes this take 1.21 s, a factor 10 difference. As a rule, the relative difference increases as maps get larger, with the `dao/arena` set of 130 scenarios on a 49x49 grid taking 673 us and 952 us respectively with and without pruning. 
 
 
 An existing C++ [JPS implementation](https://github.com/nathansttt/hog2) runs the same scenarios in about 60 ms. The fastest solver known to the author is the [l1-path-finder](https://mikolalysenko.github.io/l1-path-finder/www/) (implemented in Javascript) which can do this in 38 ms using A* with landmarks (for a 4-neighborhood).
 
-
 ### Goal of crate
-The long-term goal of this crate is to provide a fast off-the-shelf pathfinding implementation for grids.
+The long-term goal of this crate is to provide a fast off-the-shelf pathfinding implementation for uniform-cost grids.

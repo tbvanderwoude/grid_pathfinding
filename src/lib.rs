@@ -65,6 +65,7 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
 pub struct PathingGrid {
     pub grid: BoolGrid,
     pub neighbours: SimpleValueGrid<u8>,
+    pub jump_point: SimpleValueGrid<u8>,
     pub components: UnionFind<usize>,
     pub components_dirty: bool,
     pub heuristic_factor: f32,
@@ -75,16 +76,19 @@ pub struct PathingGrid {
 
 impl Default for PathingGrid {
     fn default() -> PathingGrid {
-        PathingGrid {
+        let mut grid = PathingGrid {
             grid: BoolGrid::default(),
             neighbours: SimpleValueGrid::default(),
+            jump_point: SimpleValueGrid::default(),
             components: UnionFind::new(0),
             components_dirty: false,
             improved_pruning: true,
             heuristic_factor: 1.0,
             allow_diagonal_move: true,
             context: Arc::new(Mutex::new(AstarContext::new())),
-        }
+        };
+        grid.initialize();
+        grid
     }
 }
 impl PathingGrid {
@@ -131,11 +135,27 @@ impl PathingGrid {
     }
     fn is_forced(&self, dir: Direction, node: &Point) -> bool {
         let dir_num = dir.num();
-        if dir.diagonal() {
-            !self.indexed_neighbor(node, 3 + dir_num) || !self.indexed_neighbor(node, 5 + dir_num)
-        } else {
-            !self.indexed_neighbor(node, 2 + dir_num) || !self.indexed_neighbor(node, 6 + dir_num)
+        self.jump_point.get_point(*node) & (1 << dir_num) != 0
+    }
+
+    fn forced_mask(&self, node: &Point) -> u8 {
+        let mut forced_mask: u8 = 0;
+        for dir_num in 0..8 {
+            if dir_num % 2 == 1 {
+                if !self.indexed_neighbor(node, 3 + dir_num)
+                    || !self.indexed_neighbor(node, 5 + dir_num)
+                {
+                    forced_mask |= 1 << dir_num;
+                }
+            } else {
+                if !self.indexed_neighbor(node, 2 + dir_num)
+                    || !self.indexed_neighbor(node, 6 + dir_num)
+                {
+                    forced_mask |= 1 << dir_num;
+                }
+            };
         }
+        forced_mask
     }
 
     fn pruned_neighborhood<'a>(
@@ -482,6 +502,43 @@ impl PathingGrid {
             }
         }
     }
+    pub fn set_jumppoints(&mut self, point: Point) {
+        let value = self.forced_mask(&point);
+        self.jump_point.set_point(point, value);
+    }
+    pub fn fix_jumppoints(&mut self, point: Point) {
+        self.set_jumppoints(point);
+        for p in self.neighborhood_points(&point) {
+            if self.point_in_bounds(p) {
+                self.set_jumppoints(p);
+            }
+        }
+    }
+
+    /// Performs the full jump point precomputation
+    pub fn set_all_jumppoints(&mut self) {
+        for x in 0..self.width() {
+            for y in 0..self.height() {
+                self.set_jumppoints(Point::new(x as i32, y as i32));
+            }
+        }
+    }
+
+    pub fn initialize(&mut self) {
+        // Emulates 'placing' of blocked tile around map border to correctly initialize neighbours
+        // and make behaviour of a map bordered by tiles the same as a borderless map.
+        for i in -1..=(self.width() as i32) {
+            self.update_neighbours(i, -1, true);
+            self.update_neighbours(i, self.height() as i32, true);
+        }
+        for j in -1..=(self.height() as i32) {
+            self.update_neighbours(-1, j, true);
+            self.update_neighbours(self.width() as i32, j, true);
+        }
+        self.update_all_neighbours();
+        self.set_all_jumppoints();
+    }
+
     /// Generates a new [UnionFind] structure and links up grid neighbours to the same components.
     pub fn generate_components(&mut self) {
         let w = self.grid.width;
@@ -545,6 +602,7 @@ impl ValueGrid<bool> for PathingGrid {
     fn new(width: usize, height: usize, default_value: bool) -> Self {
         let mut base_grid = PathingGrid {
             grid: BoolGrid::new(width, height, default_value),
+            jump_point: SimpleValueGrid::new(width, height, 0b00000000),
             neighbours: SimpleValueGrid::new(width, height, 0b11111111),
             components: UnionFind::new(width * height),
             components_dirty: false,
@@ -553,16 +611,7 @@ impl ValueGrid<bool> for PathingGrid {
             allow_diagonal_move: true,
             context: Arc::new(Mutex::new(AstarContext::new())),
         };
-        // Emulates 'placing' of blocked tile around map border to correctly initialize neighbours
-        // and make behaviour of a map bordered by tiles the same as a borderless map.
-        for i in -1..=(width as i32) {
-            base_grid.update_neighbours(i, -1, true);
-            base_grid.update_neighbours(i, height as i32, true);
-        }
-        for j in -1..=(height as i32) {
-            base_grid.update_neighbours(-1, j, true);
-            base_grid.update_neighbours(width as i32, j, true);
-        }
+        base_grid.initialize();
         base_grid
     }
     fn get(&self, x: i32, y: i32) -> bool {
@@ -584,6 +633,7 @@ impl ValueGrid<bool> for PathingGrid {
         }
         self.update_neighbours(p.x, p.y, blocked);
         self.grid.set(x, y, blocked);
+        self.fix_jumppoints(p);
     }
     fn width(&self) -> usize {
         self.grid.width()
