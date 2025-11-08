@@ -73,7 +73,7 @@ fn load_benchmark(name: &str) -> (BoolGrid, Vec<(Point, Point)>) {
         for x in 0..bool_grid.width() as i32 {
             // Not sure why x, y have to be swapped here...
             let tile_val = lines[offset + x as usize].as_bytes()[y as usize];
-            let val = ![b'.', b'G'].contains(&tile_val);
+            let val = ![b'.', b'G', b'S'].contains(&tile_val);
             bool_grid.set(x, y, val);
         }
     }
