@@ -1,5 +1,5 @@
 use grid_pathfinding::PathingGrid;
-use grid_util::grid::Grid;
+use grid_util::grid::ValueGrid;
 use grid_util::point::Point;
 
 // In this example a path is found to one of two goals on a 3x3 grid with shape
