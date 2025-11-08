@@ -624,7 +624,7 @@ impl ValueGrid<bool> for PathingGrid {
         if self.grid.get(x, y) != blocked && blocked {
             self.components_dirty = true;
         } else {
-            let p_ix = self.grid.get_ix(x, y);
+            let p_ix = self.grid.compute_ix(x, y);
             for p in self.neighborhood_points(&p) {
                 if self.can_move_to(p) {
                     self.components.union(p_ix, self.grid.get_ix_point(&p));
@@ -771,10 +771,10 @@ mod tests {
             [(false, false, 15), (true, false, 10), (true, true, 10)]
         {
             let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
-            pathing_grid.set_rect(Rect::new(1, 1, 2, 2), true);
-            pathing_grid.set_rect(Rect::new(5, 0, 2, 2), true);
-            pathing_grid.set_rect(Rect::new(0, 5, 2, 2), true);
-            pathing_grid.set_rect(Rect::new(8, 8, 2, 2), true);
+            pathing_grid.set_rect(Rect::new(1, 1, 1, 1), true);
+            pathing_grid.set_rect(Rect::new(5, 0, 1, 1), true);
+            pathing_grid.set_rect(Rect::new(0, 5, 1, 1), true);
+            pathing_grid.set_rect(Rect::new(8, 8, 1, 1), true);
             // pathing_grid.improved_pruning = false;
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
@@ -793,10 +793,10 @@ mod tests {
             [(false, false, 11), (true, false, 7), (true, true, 5)]
         {
             let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
-            pathing_grid.set_rect(Rect::new(1, 1, 2, 2), true);
-            pathing_grid.set_rect(Rect::new(5, 0, 2, 2), true);
-            pathing_grid.set_rect(Rect::new(0, 5, 2, 2), true);
-            pathing_grid.set_rect(Rect::new(8, 8, 2, 2), true);
+            pathing_grid.set_rect(Rect::new(1, 1, 1, 1), true);
+            pathing_grid.set_rect(Rect::new(5, 0, 1, 1), true);
+            pathing_grid.set_rect(Rect::new(0, 5, 1, 1), true);
+            pathing_grid.set_rect(Rect::new(8, 8, 1, 1), true);
             // pathing_grid.improved_pruning = false;
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
