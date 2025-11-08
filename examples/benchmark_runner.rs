@@ -35,8 +35,8 @@ fn main() {
     println!("\tTotal benchmark time: {:.2?}", total_time);
 }
 
-pub fn run_scenarios(pathing_grid: &PathingGrid, scenarios: &Vec<(Point, Point)>) {
-    for (start, goal) in scenarios {
+pub fn run_scenarios(pathing_grid: &PathingGrid, scenarios: &Vec<(Point, Point, f64)>) {
+    for (start, goal, _) in scenarios {
         let path: Option<Vec<Point>> = pathing_grid.get_waypoints_single_goal(*start, *goal, false);
         assert!(path.is_some());
     }

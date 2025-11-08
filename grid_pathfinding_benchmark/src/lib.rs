@@ -22,7 +22,7 @@ pub struct Scenario {
     distance: f64,
 }
 
-fn load_benchmark(name: &str) -> (BoolGrid, Vec<(Point, Point)>) {
+fn load_benchmark(name: &str) -> (BoolGrid, Vec<(Point, Point, f64)>) {
     let map_str = fs::read_to_string(Path::new(&format!("./maps/{}.map", name)))
         .expect("Could not read scenario file");
 
@@ -45,14 +45,14 @@ fn load_benchmark(name: &str) -> (BoolGrid, Vec<(Point, Point)>) {
         // .flexible(true)
         .from_reader(remaining_data.as_bytes());
     // Initialize an empty vector to store the parsed data
-    let mut data_array: Vec<(Point, Point)> = Vec::new();
+    let mut data_array: Vec<(Point, Point, f64)> = Vec::new();
 
     // Iterate over the records in the file
     for result in csv_reader.deserialize() {
         let record: Scenario = result.expect("Could not parse scenario record");
         let start = Point::new(record.y1 as i32, record.x1 as i32);
         let goal = Point::new(record.y2 as i32, record.x2 as i32);
-        data_array.push((start, goal));
+        data_array.push((start, goal, record.distance));
     }
 
     let lines: Vec<&str> = map_str.lines().collect();
@@ -105,7 +105,7 @@ pub fn get_benchmark_names() -> Vec<String> {
     names
 }
 
-pub fn get_benchmark(name: String) -> (BoolGrid, Vec<(Point, Point)>) {
+pub fn get_benchmark(name: String) -> (BoolGrid, Vec<(Point, Point, f64)>) {
     let benchmark_names = get_benchmark_names();
     if benchmark_names.contains(&name) {
         load_benchmark(name.as_str())

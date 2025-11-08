@@ -25,7 +25,7 @@ fn dao_bench(c: &mut Criterion) {
 
             c.bench_function(format!("{name}, {diag_str}{improved_str}").as_str(), |b| {
                 b.iter(|| {
-                    for (start, end) in &scenarios {
+                    for (start, end, _) in &scenarios {
                         black_box(pathing_grid.get_path_single_goal(*start, *end, false));
                     }
                 })
