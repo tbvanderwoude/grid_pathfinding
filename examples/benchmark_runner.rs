@@ -1,4 +1,4 @@
-use grid_pathfinding::PathingGrid;
+use grid_pathfinding::Pathfinder;
 use grid_pathfinding_benchmark::*;
 use grid_util::grid::ValueGrid;
 use grid_util::point::Point;
@@ -13,8 +13,8 @@ fn main() {
         let (bool_grid, scenarios) = get_benchmark(name);
         // for (allow_diag, pruning) in [(false, false), (true, false), (true, true)] {
         for (allow_diag, pruning) in [(true, false)] {
-            let mut pathing_grid: PathingGrid =
-                PathingGrid::new(bool_grid.width, bool_grid.height, true);
+            let mut pathing_grid: Pathfinder =
+                Pathfinder::new(bool_grid.width, bool_grid.height, true);
             pathing_grid.grid = bool_grid.clone();
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
@@ -35,7 +35,7 @@ fn main() {
     println!("\tTotal benchmark time: {:.2?}", total_time);
 }
 
-pub fn run_scenarios(pathing_grid: &PathingGrid, scenarios: &Vec<(Point, Point, f64)>) {
+pub fn run_scenarios(pathing_grid: &Pathfinder, scenarios: &Vec<(Point, Point, f64)>) {
     for (start, goal, _) in scenarios {
         let path: Option<Vec<Point>> = pathing_grid.get_waypoints_single_goal(*start, *goal, false);
         assert!(path.is_some());

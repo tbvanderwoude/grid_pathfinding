@@ -86,6 +86,7 @@ where
             parents: FxIndexMap::default(),
         }
     }
+
     pub fn astar_jps<FN, IN, FH, FS>(
         &mut self,
         start: &N,

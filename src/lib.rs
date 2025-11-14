@@ -7,6 +7,7 @@
 //! pathfinding. Note that this assumes a uniform-cost grid. Pre-computes
 //! [connected components](https://en.wikipedia.org/wiki/Component_(graph_theory))
 //! to avoid flood-filling behaviour if no path exists.
+pub mod astar;
 mod astar_jps;
 use astar_jps::AstarContext;
 use core::fmt;
@@ -68,7 +69,7 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
 /// empty ([false]). It also records neighbours in [u8] format for fast lookups during search.
 /// Implements [Grid] by building on [BoolGrid].
 #[derive(Clone, Debug)]
-pub struct PathingGrid {
+pub struct Pathfinder {
     pub grid: BoolGrid,
     pub neighbours: SimpleValueGrid<u8>,
     pub jump_point: SimpleValueGrid<u8>,
@@ -80,9 +81,9 @@ pub struct PathingGrid {
     context: Arc<Mutex<AstarContext<Point, i32>>>,
 }
 
-impl Default for PathingGrid {
-    fn default() -> PathingGrid {
-        let mut grid = PathingGrid {
+impl Default for Pathfinder {
+    fn default() -> Pathfinder {
+        let mut grid = Pathfinder {
             grid: BoolGrid::default(),
             neighbours: SimpleValueGrid::default(),
             jump_point: SimpleValueGrid::default(),
@@ -97,7 +98,7 @@ impl Default for PathingGrid {
         grid
     }
 }
-impl PathingGrid {
+impl Pathfinder {
     fn neighborhood_points(&self, point: &Point) -> SmallVec<[Point; 8]> {
         if self.allow_diagonal_move {
             point.moore_neighborhood_smallvec()
@@ -586,7 +587,7 @@ impl PathingGrid {
                         ]
                     }
                     .into_iter()
-                    .filter(|p| self.can_move_to(*p,point))
+                    .filter(|p| self.can_move_to(*p, point))
                     .collect::<Vec<_>>()
                     .iter()
                     .for_each(|p| {
@@ -598,7 +599,7 @@ impl PathingGrid {
         }
     }
 }
-impl fmt::Display for PathingGrid {
+impl fmt::Display for Pathfinder {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Grid:")?;
         for y in 0..self.grid.height as i32 {
@@ -618,9 +619,9 @@ impl fmt::Display for PathingGrid {
     }
 }
 
-impl ValueGrid<bool> for PathingGrid {
+impl ValueGrid<bool> for Pathfinder {
     fn new(width: usize, height: usize, default_value: bool) -> Self {
-        let mut base_grid = PathingGrid {
+        let mut base_grid = Pathfinder {
             grid: BoolGrid::new(width, height, default_value),
             jump_point: SimpleValueGrid::new(width, height, 0b00000000),
             neighbours: SimpleValueGrid::new(width, height, 0b11111111),
@@ -677,7 +678,7 @@ mod tests {
         // | # |
         // | # |
         //  ___
-        let mut path_graph = PathingGrid::new(3, 2, false);
+        let mut path_graph = Pathfinder::new(3, 2, false);
         path_graph.grid.set(1, 0, true);
         path_graph.grid.set(1, 1, true);
         let f_ix = |p| path_graph.get_ix_point(p);
@@ -697,7 +698,7 @@ mod tests {
 
     #[test]
     fn reachable_with_diagonals() {
-        let mut path_graph = PathingGrid::new(3, 2, false);
+        let mut path_graph = Pathfinder::new(3, 2, false);
         path_graph.grid.set(1, 0, true);
         path_graph.grid.set(1, 1, true);
         let p1 = Point::new(0, 0);
@@ -719,7 +720,7 @@ mod tests {
         // | # |
         // |  G|
         //  ___
-        let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
+        let mut pathing_grid: Pathfinder = Pathfinder::new(3, 3, false);
         pathing_grid.improved_pruning = false;
         pathing_grid.allow_diagonal_move = false;
         pathing_grid.set(1, 1, true);
@@ -733,7 +734,7 @@ mod tests {
     #[test]
     fn equal_start_goal() {
         for (allow_diag, pruning) in [(false, false), (true, false), (true, true)] {
-            let mut pathing_grid: PathingGrid = PathingGrid::new(1, 1, false);
+            let mut pathing_grid: Pathfinder = Pathfinder::new(1, 1, false);
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
             pathing_grid.generate_components();
@@ -751,7 +752,7 @@ mod tests {
         for (allow_diag, pruning, expected) in
             [(false, false, 5), (true, false, 4), (true, true, 4)]
         {
-            let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
+            let mut pathing_grid: Pathfinder = Pathfinder::new(3, 3, false);
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
             pathing_grid.set(1, 1, true);
@@ -770,7 +771,7 @@ mod tests {
         for (allow_diag, pruning, expected) in
             [(false, false, 7), (true, false, 5), (true, true, 5)]
         {
-            let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
+            let mut pathing_grid: Pathfinder = Pathfinder::new(5, 5, false);
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
             pathing_grid.set(1, 1, true);
@@ -790,7 +791,7 @@ mod tests {
         for (allow_diag, pruning, expected) in
             [(false, false, 15), (true, false, 10), (true, true, 10)]
         {
-            let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
+            let mut pathing_grid: Pathfinder = Pathfinder::new(10, 10, false);
             pathing_grid.set_rect(Rect::new(1, 1, 1, 1), true);
             pathing_grid.set_rect(Rect::new(5, 0, 1, 1), true);
             pathing_grid.set_rect(Rect::new(0, 5, 1, 1), true);
@@ -812,7 +813,7 @@ mod tests {
         for (allow_diag, pruning, expected) in
             [(false, false, 11), (true, false, 7), (true, true, 5)]
         {
-            let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
+            let mut pathing_grid: Pathfinder = Pathfinder::new(10, 10, false);
             pathing_grid.set_rect(Rect::new(1, 1, 1, 1), true);
             pathing_grid.set_rect(Rect::new(5, 0, 1, 1), true);
             pathing_grid.set_rect(Rect::new(0, 5, 1, 1), true);
@@ -837,9 +838,9 @@ mod tests {
         // | #|
         // |# |
         //  __
-        let mut pathing_grid: PathingGrid = PathingGrid::new(2, 2, true);
+        let mut pathing_grid: Pathfinder = Pathfinder::new(2, 2, true);
         pathing_grid.allow_diagonal_move = false;
-        let mut pathing_grid_diag: PathingGrid = PathingGrid::new(2, 2, true);
+        let mut pathing_grid_diag: Pathfinder = Pathfinder::new(2, 2, true);
         for pathing_grid in [&mut pathing_grid, &mut pathing_grid_diag] {
             pathing_grid.set(0, 0, false);
             pathing_grid.set(1, 1, false);
@@ -858,9 +859,9 @@ mod tests {
         // | #|
         // |# |
         //  __
-        let mut pathing_grid: PathingGrid = PathingGrid::new(2, 2, true);
+        let mut pathing_grid: Pathfinder = Pathfinder::new(2, 2, true);
         pathing_grid.allow_diagonal_move = false;
-        let mut pathing_grid_diag: PathingGrid = PathingGrid::new(2, 2, true);
+        let mut pathing_grid_diag: Pathfinder = Pathfinder::new(2, 2, true);
         for pathing_grid in [&mut pathing_grid, &mut pathing_grid_diag] {
             pathing_grid.set(0, 0, false);
             pathing_grid.set(1, 1, false);

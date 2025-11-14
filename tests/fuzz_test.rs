@@ -4,8 +4,8 @@ use grid_pathfinding::*;
 use grid_util::*;
 use rand::prelude::*;
 
-fn random_grid(n: usize, rng: &mut StdRng, diagonal: bool, improved_pruning: bool) -> PathingGrid {
-    let mut pathing_grid: PathingGrid = PathingGrid::new(n, n, false);
+fn random_grid(n: usize, rng: &mut StdRng, diagonal: bool, improved_pruning: bool) -> Pathfinder {
+    let mut pathing_grid: Pathfinder = Pathfinder::new(n, n, false);
     pathing_grid.allow_diagonal_move = diagonal;
     pathing_grid.improved_pruning = improved_pruning;
     for x in 0..pathing_grid.width() as i32 {
@@ -17,7 +17,7 @@ fn random_grid(n: usize, rng: &mut StdRng, diagonal: bool, improved_pruning: boo
     pathing_grid
 }
 
-fn visualize_grid(grid: &PathingGrid, start: &Point, end: &Point) {
+fn visualize_grid(grid: &Pathfinder, start: &Point, end: &Point) {
     let grid = &grid.grid;
     for y in (0..grid.height as i32).rev() {
         for x in 0..grid.width as i32 {
@@ -42,7 +42,7 @@ fn fuzz() {
     const N_GRIDS: usize = 10000;
     let mut rng = StdRng::seed_from_u64(0);
     for (diagonal, improved_pruning) in [(false, false), (true, false), (true, true)] {
-        let mut random_grids: Vec<PathingGrid> = Vec::new();
+        let mut random_grids: Vec<Pathfinder> = Vec::new();
         for _ in 0..N_GRIDS {
             random_grids.push(random_grid(N, &mut rng, diagonal, improved_pruning))
         }

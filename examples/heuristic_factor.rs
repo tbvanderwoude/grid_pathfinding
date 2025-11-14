@@ -1,4 +1,4 @@
-use grid_pathfinding::PathingGrid;
+use grid_pathfinding::Pathfinder;
 use grid_util::grid::ValueGrid;
 use grid_util::point::Point;
 use grid_util::Rect;
@@ -8,7 +8,7 @@ use grid_util::Rect;
 
 fn main() {
     const N: i32 = 30;
-    let mut pathing_grid: PathingGrid = PathingGrid::new(N as usize, N as usize, true);
+    let mut pathing_grid: Pathfinder = Pathfinder::new(N as usize, N as usize, true);
     pathing_grid.heuristic_factor = 1.3;
     pathing_grid.set_rect(Rect::new(1, 1, N - 2, N - 2), false);
     pathing_grid.set_rect(Rect::new(8, 8, 8, 8), true);

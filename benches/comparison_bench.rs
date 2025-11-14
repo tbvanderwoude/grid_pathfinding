@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use grid_pathfinding::PathingGrid;
+use grid_pathfinding::Pathfinder;
 use grid_pathfinding_benchmark::*;
 use grid_util::grid::ValueGrid;
 use std::hint::black_box;
@@ -13,8 +13,8 @@ fn dao_bench(c: &mut Criterion) {
         };
         for name in bench_set {
             let (bool_grid, scenarios) = get_benchmark(name.to_owned());
-            let mut pathing_grid: PathingGrid =
-                PathingGrid::new(bool_grid.width, bool_grid.height, true);
+            let mut pathing_grid: Pathfinder =
+                Pathfinder::new(bool_grid.width, bool_grid.height, true);
             pathing_grid.grid = bool_grid.clone();
             pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;

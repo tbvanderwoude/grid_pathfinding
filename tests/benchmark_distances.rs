@@ -18,8 +18,7 @@ fn verify_solution_distance() {
     let bench_set = ["dao/arena", "dao/lak107d", "dao/den101d"];
     for name in bench_set {
         let (bool_grid, scenarios) = get_benchmark(name.to_owned());
-        let mut pathing_grid: PathingGrid =
-            PathingGrid::new(bool_grid.width, bool_grid.height, true);
+        let mut pathing_grid: Pathfinder = Pathfinder::new(bool_grid.width, bool_grid.height, true);
         pathing_grid.grid = bool_grid.clone();
         pathing_grid.allow_diagonal_move = true;
         pathing_grid.improved_pruning = false;

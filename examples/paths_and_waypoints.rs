@@ -1,4 +1,4 @@
-use grid_pathfinding::{waypoints_to_path, PathingGrid};
+use grid_pathfinding::{waypoints_to_path, Pathfinder};
 use grid_util::grid::ValueGrid;
 use grid_util::point::Point;
 
@@ -20,7 +20,7 @@ use grid_util::point::Point;
 // path, as a shorthand for the two previous calls.
 
 fn main() {
-    let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
+    let mut pathing_grid: Pathfinder = Pathfinder::new(5, 5, false);
     pathing_grid.set(1, 1, true);
     pathing_grid.generate_components();
     println!("{}", pathing_grid);
