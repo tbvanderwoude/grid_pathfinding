@@ -1,3 +1,5 @@
+use grid_pathfinding::pathing_grid::PathingGrid;
+use grid_pathfinding::solver::{AstarSolver, GridSolver};
 use grid_pathfinding::*;
 use grid_pathfinding_benchmark::get_benchmark;
 use grid_util::*;
@@ -41,7 +43,45 @@ fn verify_solution_distance() {
             save_path(path, "path.csv").unwrap();
             let float_cost = convert_cost_to_unit_cost_float(total_cost_int);
             println!("My distance: {float_cost}");
-            if *distance >=0.01{
+            if *distance >= 0.01 {
+                let delta_dist = (float_cost - distance).abs() / distance;
+                assert!(delta_dist < 0.05);
+            }
+        }
+    }
+}
+
+#[test]
+fn verify_solution_distance_astar() {
+    let bench_set = ["dao/arena", "dao/lak107d", "dao/den101d"];
+    let solver = AstarSolver::new();
+
+    for name in bench_set {
+        let (bool_grid, scenarios) = get_benchmark(name.to_owned());
+        let mut pathing_grid: PathingGrid =
+            PathingGrid::new(bool_grid.width, bool_grid.height, true);
+        pathing_grid.grid = bool_grid.clone();
+        pathing_grid.allow_diagonal_move = true;
+        pathing_grid.initialize();
+        pathing_grid.generate_components();
+        for (start, end, distance) in &scenarios {
+            println!("Start: {start}; End: {end}; Distance: {distance}");
+            let path = solver
+                .get_path_single_goal(&mut pathing_grid, *start, *end, false)
+                .unwrap();
+            let mut v = path[0];
+            let n = path.len();
+            let mut total_cost_int = 0;
+            for i in 1..n {
+                let v_old = v;
+                v = path[i];
+                let cost = solver.heuristic(&pathing_grid, &v_old, &v);
+                total_cost_int += cost;
+            }
+            save_path(path, "path.csv").unwrap();
+            let float_cost = convert_cost_to_unit_cost_float(total_cost_int);
+            println!("My distance: {float_cost}");
+            if *distance >= 0.01 {
                 let delta_dist = (float_cost - distance).abs() / distance;
                 assert!(delta_dist < 0.05);
             }
