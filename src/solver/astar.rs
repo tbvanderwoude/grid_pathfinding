@@ -19,12 +19,16 @@ impl AstarSolver {
 impl GridSolver for AstarSolver {
     type Successors = SmallVec<[(Point, i32); N_SMALLVEC_SIZE]>;
 
-    fn successors(
+    fn successors<F>(
         &self,
         grid: &PathingGrid,
         _parent: Option<&Point>,
         node: &Point,
-    ) -> Self::Successors {
+        _goal: &F,
+    ) -> Self::Successors
+    where
+        F: Fn(&Point) -> bool,
+    {
         grid.neighborhood_points_and_cost(node)
     }
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.

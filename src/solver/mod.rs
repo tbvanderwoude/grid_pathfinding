@@ -8,12 +8,15 @@ pub trait GridSolver {
     type Successors: IntoIterator<Item = (Point, i32)>;
 
     fn heuristic(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32;
-    fn successors(
+    fn successors<F>(
         &self,
         grid: &PathingGrid,
-        _parent: Option<&Point>,
+        parent: Option<&Point>,
         node: &Point,
-    ) -> Self::Successors;
+        goal: &F,
+    ) -> Self::Successors
+    where
+        F: Fn(&Point) -> bool;
 
     fn get_path_single_goal(
         &self,
@@ -43,7 +46,12 @@ pub trait GridSolver {
             let mut ct = grid.context.lock().unwrap();
             ct.astar_jps(
                 &start,
-                |parent, node| self.successors(grid, *parent, node),
+                |parent, node| {
+                    self.successors(grid, *parent, node, &|node_pos| {
+                        self.heuristic(grid, node_pos, &goal)
+                            <= if EQUAL_EDGE_COST { 1 } else { 99 }
+                    })
+                },
                 |point| self.heuristic(grid, point, &goal),
                 |point| self.heuristic(grid, point, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 },
             )
@@ -56,7 +64,7 @@ pub trait GridSolver {
             let mut ct = grid.context.lock().unwrap();
             ct.astar_jps(
                 &start,
-                |parent, node| self.successors(grid, *parent, node),
+                |parent, node| self.successors(grid, *parent, node, &|node_pos| *node_pos == goal),
                 |point| self.heuristic(grid, point, &goal),
                 |point| *point == goal,
             )
@@ -86,7 +94,7 @@ pub trait GridSolver {
         let mut ct = grid.context.lock().unwrap();
         let result = ct.astar_jps(
             &start,
-            |parent, node| self.successors(grid, *parent, node),
+            |parent, node| self.successors(grid, *parent, node, &|point| goals.contains(&point)),
             |point| {
                 goals
                     .iter()
