@@ -70,18 +70,18 @@ where
 
 /// [AstarContext] represents the search fringe and node parent map, facilitating reuse of memory allocations.
 #[derive(Clone, Debug)]
-pub struct AstarContext<N, C> {
+pub struct SearchContext<N, C> {
     fringe: BinaryHeap<SearchNode<C>>,
     parents: FxIndexMap<N, (usize, C)>,
 }
 
-impl<N, C> AstarContext<N, C>
+impl<N, C> SearchContext<N, C>
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
 {
-    pub fn new() -> AstarContext<N, C> {
-        AstarContext {
+    pub fn new() -> SearchContext<N, C> {
+        SearchContext {
             fringe: BinaryHeap::new(),
             parents: FxIndexMap::default(),
         }
@@ -174,6 +174,6 @@ where
     FH: FnMut(&N) -> C,
     FS: FnMut(&N) -> bool,
 {
-    let mut search = AstarContext::new();
+    let mut search = SearchContext::new();
     search.astar_jps(start, successors, heuristic, success)
 }

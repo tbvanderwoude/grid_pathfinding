@@ -13,7 +13,7 @@ pub struct PathingGrid {
     pub components: UnionFind<usize>,
     pub components_dirty: bool,
     pub allow_diagonal_move: bool,
-    pub(crate) context: Arc<Mutex<AstarContext<Point, i32>>>,
+    pub(crate) context: Arc<Mutex<SearchContext<Point, i32>>>,
 }
 
 impl Default for PathingGrid {
@@ -24,7 +24,7 @@ impl Default for PathingGrid {
             components: UnionFind::new(0),
             components_dirty: false,
             allow_diagonal_move: true,
-            context: Arc::new(Mutex::new(AstarContext::new())),
+            context: Arc::new(Mutex::new(SearchContext::new())),
         };
         grid.initialize();
         grid
@@ -252,7 +252,7 @@ impl ValueGrid<bool> for PathingGrid {
             components: UnionFind::new(width * height),
             components_dirty: false,
             allow_diagonal_move: true,
-            context: Arc::new(Mutex::new(AstarContext::new())),
+            context: Arc::new(Mutex::new(SearchContext::new())),
         };
         base_grid.initialize();
         base_grid

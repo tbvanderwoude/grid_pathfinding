@@ -10,7 +10,7 @@
 mod astar_jps;
 pub mod pathing_grid;
 pub mod solver;
-use astar_jps::AstarContext;
+use astar_jps::SearchContext;
 use core::fmt;
 use grid_util::direction::Direction;
 use grid_util::grid::{BoolGrid, SimpleValueGrid, ValueGrid};
@@ -79,7 +79,7 @@ pub struct Pathfinder {
     pub heuristic_factor: f32,
     pub improved_pruning: bool,
     pub allow_diagonal_move: bool,
-    context: Arc<Mutex<AstarContext<Point, i32>>>,
+    context: Arc<Mutex<SearchContext<Point, i32>>>,
 }
 
 impl Default for Pathfinder {
@@ -93,7 +93,7 @@ impl Default for Pathfinder {
             improved_pruning: true,
             heuristic_factor: 1.0,
             allow_diagonal_move: true,
-            context: Arc::new(Mutex::new(AstarContext::new())),
+            context: Arc::new(Mutex::new(SearchContext::new())),
         };
         grid.initialize();
         grid
@@ -631,7 +631,7 @@ impl ValueGrid<bool> for Pathfinder {
             improved_pruning: true,
             heuristic_factor: 1.0,
             allow_diagonal_move: true,
-            context: Arc::new(Mutex::new(AstarContext::new())),
+            context: Arc::new(Mutex::new(SearchContext::new())),
         };
         base_grid.initialize();
         base_grid
