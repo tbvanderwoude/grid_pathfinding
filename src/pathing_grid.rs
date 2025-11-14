@@ -31,7 +31,7 @@ impl Default for PathingGrid {
     }
 }
 impl PathingGrid {
-    fn neighborhood_points(&self, point: &Point) -> SmallVec<[Point; 8]> {
+    pub fn neighborhood_points(&self, point: &Point) -> SmallVec<[Point; 8]> {
         if self.allow_diagonal_move {
             point.moore_neighborhood_smallvec()
         } else {
@@ -66,7 +66,7 @@ impl PathingGrid {
         self.grid.index_in_bounds(x, y)
     }
     /// The neighbour indexing used here corresponds to that used in [grid_util::Direction].
-    fn indexed_neighbor(&self, node: &Point, index: i32) -> bool {
+    pub fn indexed_neighbor(&self, node: &Point, index: i32) -> bool {
         (self.neighbours.get_point(*node) & 1 << (index.rem_euclid(8))) != 0
     }
 
