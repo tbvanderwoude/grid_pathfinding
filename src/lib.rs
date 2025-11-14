@@ -586,7 +586,9 @@ impl PathingGrid {
                         ]
                     }
                     .into_iter()
-                    .filter(|p| self.grid.point_in_bounds(*p) && !self.grid.get_point(*p))
+                    .filter(|p| self.can_move_to(*p,point))
+                    .collect::<Vec<_>>()
+                    .iter()
                     .for_each(|p| {
                         let ix = self.grid.get_ix_point(&p);
                         self.components.union(parent_ix, ix);
