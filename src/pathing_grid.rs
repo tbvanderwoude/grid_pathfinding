@@ -49,7 +49,7 @@ impl PathingGrid {
             .map(move |p| (p, (pos.dir_obj(&p).num() % 2) * (D - C) + C))
             .collect::<SmallVec<[_; N_SMALLVEC_SIZE]>>()
     }
-    fn can_move_to(&self, pos: Point, start: Point) -> bool {
+    pub fn can_move_to(&self, pos: Point, start: Point) -> bool {
         if ALLOW_CORNER_CUTTING {
             self.can_move_to_simple(pos)
         } else {
@@ -59,7 +59,7 @@ impl PathingGrid {
                     && !self.grid.get_point(Point::new(pos.x, start.y)))
         }
     }
-    fn can_move_to_simple(&self, pos: Point) -> bool {
+    pub fn can_move_to_simple(&self, pos: Point) -> bool {
         self.point_in_bounds(pos) && !self.grid.get_point(pos)
     }
     fn in_bounds(&self, x: i32, y: i32) -> bool {
@@ -68,26 +68,6 @@ impl PathingGrid {
     /// The neighbour indexing used here corresponds to that used in [grid_util::Direction].
     pub fn indexed_neighbor(&self, node: &Point, index: i32) -> bool {
         (self.neighbours.get_point(*node) & 1 << (index.rem_euclid(8))) != 0
-    }
-
-    fn forced_mask(&self, node: &Point) -> u8 {
-        let mut forced_mask: u8 = 0;
-        for dir_num in 0..8 {
-            if dir_num % 2 == 1 {
-                if ALLOW_CORNER_CUTTING && !self.indexed_neighbor(node, 3 + dir_num)
-                    || !self.indexed_neighbor(node, 5 + dir_num)
-                {
-                    forced_mask |= 1 << dir_num;
-                }
-            } else {
-                if !self.indexed_neighbor(node, 2 + dir_num)
-                    || !self.indexed_neighbor(node, 6 + dir_num)
-                {
-                    forced_mask |= 1 << dir_num;
-                }
-            };
-        }
-        forced_mask
     }
 
     /// Updates the neighbours grid after changing the grid.
