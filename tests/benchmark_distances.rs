@@ -1,5 +1,5 @@
 use grid_pathfinding::pathing_grid::PathingGrid;
-use grid_pathfinding::solver::{AstarSolver, GridSolver};
+use grid_pathfinding::solver::{astar::AstarSolver, GridSolver};
 use grid_pathfinding::*;
 use grid_pathfinding_benchmark::get_benchmark;
 use grid_util::*;
