@@ -7,8 +7,9 @@
 //! pathfinding. Note that this assumes a uniform-cost grid. Pre-computes
 //! [connected components](https://en.wikipedia.org/wiki/Component_(graph_theory))
 //! to avoid flood-filling behaviour if no path exists.
-pub mod astar;
 mod astar_jps;
+pub mod pathing_grid;
+pub mod solver;
 use astar_jps::AstarContext;
 use core::fmt;
 use grid_util::direction::Direction;
