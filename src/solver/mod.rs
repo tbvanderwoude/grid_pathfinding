@@ -4,7 +4,6 @@ use grid_util::Point;
 pub mod astar;
 pub mod jps;
 pub trait GridSolver {
-    /// Container type for successors; you can keep this fixed to SmallVec if you prefer.
     type Successors: IntoIterator<Item = (Point, i32)>;
 
     fn heuristic(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32;

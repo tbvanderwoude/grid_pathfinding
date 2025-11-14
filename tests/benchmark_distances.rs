@@ -1,5 +1,5 @@
 use grid_pathfinding::pathing_grid::PathingGrid;
-use grid_pathfinding::solver::{astar::AstarSolver, GridSolver};
+use grid_pathfinding::solver::{astar::AstarSolver, jps::JPSSolver, GridSolver};
 use grid_pathfinding::*;
 use grid_pathfinding_benchmark::get_benchmark;
 use grid_util::*;
@@ -16,20 +16,24 @@ fn save_path(path: Vec<Point>, filename: &str) -> std::io::Result<()> {
 }
 
 #[test]
-fn verify_solution_distance() {
+fn verify_solution_distance_jps() {
     let bench_set = ["dao/arena", "dao/lak107d", "dao/den101d"];
     for name in bench_set {
         let (bool_grid, scenarios) = get_benchmark(name.to_owned());
-        let mut pathing_grid: Pathfinder = Pathfinder::new(bool_grid.width, bool_grid.height, true);
+        let mut pathing_grid: PathingGrid =
+            PathingGrid::new(bool_grid.width, bool_grid.height, true);
+
         pathing_grid.grid = bool_grid.clone();
         pathing_grid.allow_diagonal_move = true;
-        pathing_grid.improved_pruning = false;
         pathing_grid.initialize();
         pathing_grid.generate_components();
+        let mut solver = JPSSolver::new(&pathing_grid);
+        solver.set_all_jumppoints(&pathing_grid);
+
         for (start, end, distance) in &scenarios {
             println!("Start: {start}; End: {end}; Distance: {distance}");
-            let path = pathing_grid
-                .get_path_single_goal(*start, *end, false)
+            let path = solver
+                .get_path_single_goal(&mut pathing_grid, *start, *end, false)
                 .unwrap();
             let mut v = path[0];
             let n = path.len();
@@ -37,7 +41,7 @@ fn verify_solution_distance() {
             for i in 1..n {
                 let v_old = v;
                 v = path[i];
-                let cost = pathing_grid.heuristic(&v_old, &v);
+                let cost = solver.heuristic(&pathing_grid, &v_old, &v);
                 total_cost_int += cost;
             }
             save_path(path, "path.csv").unwrap();
