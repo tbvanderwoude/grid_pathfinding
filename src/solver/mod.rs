@@ -1,4 +1,4 @@
-use crate::{pathing_grid::PathingGrid, waypoints_to_path, C, EQUAL_EDGE_COST};
+use crate::{pathing_grid::PathingGrid, waypoints_to_path, C, D, E, EQUAL_EDGE_COST};
 use grid_util::Point;
 
 pub mod astar;
@@ -14,7 +14,19 @@ pub trait GridSolver {
 
     fn heuristic(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32;
 
-    fn cost(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32;
+    /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
+    fn cost(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32 {
+        if grid.allow_diagonal_move {
+            let delta_x = (p1.x - p2.x).abs();
+            let delta_y = (p1.y - p2.y).abs();
+            // Formula from https://github.com/riscy/a_star_on_grids
+            // to efficiently compute the cost of a path taking the maximal amount
+            // of diagonal steps before going straight
+            (E * (delta_x - delta_y).abs() + D * (delta_x + delta_y)) / 2
+        } else {
+            p1.manhattan_distance(p2) * C
+        }
+    }
 
     fn successors<F>(
         &self,

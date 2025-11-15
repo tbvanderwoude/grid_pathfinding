@@ -160,8 +160,9 @@ impl Pathfinder {
         let mut forced_mask: u8 = 0;
         for dir_num in 0..8 {
             if dir_num % 2 == 1 {
-                if ALLOW_CORNER_CUTTING && (!self.indexed_neighbor(node, 3 + dir_num)
-                    || !self.indexed_neighbor(node, 5 + dir_num))
+                if ALLOW_CORNER_CUTTING
+                    && (!self.indexed_neighbor(node, 3 + dir_num)
+                        || !self.indexed_neighbor(node, 5 + dir_num))
                 {
                     forced_mask |= 1 << dir_num;
                 }

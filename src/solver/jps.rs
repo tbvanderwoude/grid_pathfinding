@@ -62,21 +62,7 @@ impl GridSolver for JPSSolver {
 
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
     fn heuristic(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32 {
-        if grid.allow_diagonal_move {
-            let delta_x = (p1.x - p2.x).abs();
-            let delta_y = (p1.y - p2.y).abs();
-            // Formula from https://github.com/riscy/a_star_on_grids
-            // to efficiently compute the cost of a path taking the maximal amount
-            // of diagonal steps before going straight
-            (E * (delta_x - delta_y).abs() + D * (delta_x + delta_y)) / 2
-        } else {
-            p1.manhattan_distance(p2) * C
-        }
-    }
-
-    /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
-    fn cost(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32 {
-        self.heuristic(grid, p1, p2)
+        self.cost(grid, p1, p2)
     }
 }
 impl JPSSolver {
@@ -128,8 +114,9 @@ impl JPSSolver {
         let mut forced_mask: u8 = 0;
         for dir_num in 0..8 {
             if dir_num % 2 == 1 {
-                if ALLOW_CORNER_CUTTING && (!self.indexed_neighbor(node, 3 + dir_num)
-                    || !self.indexed_neighbor(node, 5 + dir_num))
+                if ALLOW_CORNER_CUTTING
+                    && (!self.indexed_neighbor(node, 3 + dir_num)
+                        || !self.indexed_neighbor(node, 5 + dir_num))
                 {
                     forced_mask |= 1 << dir_num;
                 }
