@@ -9,7 +9,6 @@ use std::sync::{Arc, Mutex};
 #[derive(Clone, Debug)]
 pub struct PathingGrid {
     pub grid: BoolGrid,
-    pub neighbours: SimpleValueGrid<u8>,
     pub components: UnionFind<usize>,
     pub components_dirty: bool,
     pub allow_diagonal_move: bool,
@@ -18,15 +17,13 @@ pub struct PathingGrid {
 
 impl Default for PathingGrid {
     fn default() -> PathingGrid {
-        let mut grid = PathingGrid {
+        let grid = PathingGrid {
             grid: BoolGrid::default(),
-            neighbours: SimpleValueGrid::default(),
             components: UnionFind::new(0),
             components_dirty: false,
             allow_diagonal_move: true,
             context: Arc::new(Mutex::new(SearchContext::new())),
         };
-        grid.initialize();
         grid
     }
 }
@@ -65,28 +62,7 @@ impl PathingGrid {
     fn in_bounds(&self, x: i32, y: i32) -> bool {
         self.grid.index_in_bounds(x, y)
     }
-    /// The neighbour indexing used here corresponds to that used in [grid_util::Direction].
-    pub fn indexed_neighbor(&self, node: &Point, index: i32) -> bool {
-        (self.neighbours.get_point(*node) & 1 << (index.rem_euclid(8))) != 0
-    }
 
-    /// Updates the neighbours grid after changing the grid.
-    fn update_neighbours(&mut self, x: i32, y: i32, blocked: bool) {
-        let p = Point::new(x, y);
-        for i in 0..8 {
-            let neighbor = p.moore_neighbor(i);
-            if self.in_bounds(neighbor.x, neighbor.y) {
-                let ix = (i + 4) % 8;
-                let mut n_mask = self.neighbours.get_point(neighbor);
-                if blocked {
-                    n_mask &= !(1 << ix);
-                } else {
-                    n_mask |= 1 << ix;
-                }
-                self.neighbours.set_point(neighbor, n_mask);
-            }
-        }
-    }
     /// Retrieves the component id a given [Point] belongs to.
     pub fn get_component(&self, point: &Point) -> usize {
         self.components.find(self.get_ix_point(point))
@@ -141,28 +117,6 @@ impl PathingGrid {
         }
     }
 
-    pub fn update_all_neighbours(&mut self) {
-        for x in 0..self.width() as i32 {
-            for y in 0..self.height() as i32 {
-                self.update_neighbours(x, y, self.get(x, y));
-            }
-        }
-    }
-
-    pub fn initialize(&mut self) {
-        // Emulates 'placing' of blocked tile around map border to correctly initialize neighbours
-        // and make behaviour of a map bordered by tiles the same as a borderless map.
-        for i in -1..=(self.width() as i32) {
-            self.update_neighbours(i, -1, true);
-            self.update_neighbours(i, self.height() as i32, true);
-        }
-        for j in -1..=(self.height() as i32) {
-            self.update_neighbours(-1, j, true);
-            self.update_neighbours(self.width() as i32, j, true);
-        }
-        self.update_all_neighbours();
-    }
-
     /// Generates a new [UnionFind] structure and links up grid neighbours to the same components.
     pub fn generate_components(&mut self) {
         let w = self.grid.width;
@@ -213,28 +167,20 @@ impl fmt::Display for PathingGrid {
                 .collect::<Vec<i32>>();
             writeln!(f, "{:?}", values)?;
         }
-        writeln!(f, "\nNeighbours:")?;
-        for y in 0..self.neighbours.height as i32 {
-            let values = (0..self.neighbours.width as i32)
-                .map(|x| self.neighbours.get(x, y) as i32)
-                .collect::<Vec<i32>>();
-            writeln!(f, "{:?}", values)?;
-        }
         Ok(())
     }
 }
 
 impl ValueGrid<bool> for PathingGrid {
     fn new(width: usize, height: usize, default_value: bool) -> Self {
-        let mut base_grid = PathingGrid {
+        let base_grid = PathingGrid {
             grid: BoolGrid::new(width, height, default_value),
-            neighbours: SimpleValueGrid::new(width, height, 0b11111111),
+
             components: UnionFind::new(width * height),
             components_dirty: false,
             allow_diagonal_move: true,
             context: Arc::new(Mutex::new(SearchContext::new())),
         };
-        base_grid.initialize();
         base_grid
     }
     fn get(&self, x: i32, y: i32) -> bool {
@@ -254,7 +200,6 @@ impl ValueGrid<bool> for PathingGrid {
                 }
             }
         }
-        self.update_neighbours(p.x, p.y, blocked);
         self.grid.set(x, y, blocked);
     }
     fn width(&self) -> usize {

@@ -1,3 +1,4 @@
+use core::fmt;
 use grid_util::{Direction, Point, SimpleValueGrid, ValueGrid};
 use smallvec::SmallVec;
 
@@ -8,6 +9,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct JPSSolver {
     pub jump_point: SimpleValueGrid<u8>,
+    pub neighbours: SimpleValueGrid<u8>,
     pub improved_pruning: bool,
 }
 
@@ -81,6 +83,7 @@ impl JPSSolver {
     pub fn new(grid: &PathingGrid, improved_pruning: bool) -> JPSSolver {
         let mut solver = JPSSolver {
             jump_point: SimpleValueGrid::new(grid.width(), grid.height(), 0),
+            neighbours: SimpleValueGrid::new(grid.width(), grid.height(), 0b11111111),
             improved_pruning,
         };
         solver.initialize(grid);
@@ -91,19 +94,48 @@ impl JPSSolver {
         let dir_num = dir.num();
         self.jump_point.get_point(*node) & (1 << dir_num) != 0
     }
-
-    fn forced_mask(&self, node: &Point, grid: &PathingGrid) -> u8 {
+    /// The neighbour indexing used here corresponds to that used in [grid_util::Direction].
+    pub fn indexed_neighbor(&self, node: &Point, index: i32) -> bool {
+        (self.neighbours.get_point(*node) & 1 << (index.rem_euclid(8))) != 0
+    }
+    fn width(&self) -> usize {
+        self.neighbours.width()
+    }
+    fn height(&self) -> usize {
+        self.neighbours.height()
+    }
+    fn in_bounds(&self, x: i32, y: i32) -> bool {
+        self.neighbours.index_in_bounds(x, y)
+    }
+    /// Updates the neighbours grid after changing the grid.
+    fn update_neighbours(&mut self, x: i32, y: i32, blocked: bool) {
+        let p = Point::new(x, y);
+        for i in 0..8 {
+            let neighbor = p.moore_neighbor(i);
+            if self.in_bounds(neighbor.x, neighbor.y) {
+                let ix = (i + 4) % 8;
+                let mut n_mask = self.neighbours.get_point(neighbor);
+                if blocked {
+                    n_mask &= !(1 << ix);
+                } else {
+                    n_mask |= 1 << ix;
+                }
+                self.neighbours.set_point(neighbor, n_mask);
+            }
+        }
+    }
+    fn forced_mask(&self, node: &Point) -> u8 {
         let mut forced_mask: u8 = 0;
         for dir_num in 0..8 {
             if dir_num % 2 == 1 {
-                if ALLOW_CORNER_CUTTING && !grid.indexed_neighbor(node, 3 + dir_num)
-                    || !grid.indexed_neighbor(node, 5 + dir_num)
+                if ALLOW_CORNER_CUTTING && !self.indexed_neighbor(node, 3 + dir_num)
+                    || !self.indexed_neighbor(node, 5 + dir_num)
                 {
                     forced_mask |= 1 << dir_num;
                 }
             } else {
-                if !grid.indexed_neighbor(node, 2 + dir_num)
-                    || !grid.indexed_neighbor(node, 6 + dir_num)
+                if !self.indexed_neighbor(node, 2 + dir_num)
+                    || !self.indexed_neighbor(node, 6 + dir_num)
                 {
                     forced_mask |= 1 << dir_num;
                 }
@@ -120,25 +152,25 @@ impl JPSSolver {
     ) -> impl Iterator<Item = (Point, i32)> + 'a {
         let dir_num = dir.num();
         let mut n_mask: u8;
-        let mut neighbours = grid.neighbours.get_point(*node);
+        let mut neighbours = self.neighbours.get_point(*node);
         if !grid.allow_diagonal_move {
             neighbours &= 0b01010101;
             n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
         } else if dir.diagonal() {
             n_mask = 0b10000011_u8.rotate_left(dir_num as u32);
-            if !grid.indexed_neighbor(node, 3 + dir_num) {
+            if !self.indexed_neighbor(node, 3 + dir_num) {
                 n_mask |= 1 << ((dir_num + 2) % 8);
             }
-            if !grid.indexed_neighbor(node, 5 + dir_num) {
+            if !self.indexed_neighbor(node, 5 + dir_num) {
                 n_mask |= 1 << ((dir_num + 6) % 8);
             }
         } else {
             if ALLOW_CORNER_CUTTING {
                 n_mask = 0b00000001 << dir_num;
-                if !grid.indexed_neighbor(node, 2 + dir_num) {
+                if !self.indexed_neighbor(node, 2 + dir_num) {
                     n_mask |= 1 << ((dir_num + 1) % 8);
                 }
-                if !grid.indexed_neighbor(node, 6 + dir_num) {
+                if !self.indexed_neighbor(node, 6 + dir_num) {
                     n_mask |= 1 << ((dir_num + 7) % 8);
                 }
             } else {
@@ -246,29 +278,65 @@ impl JPSSolver {
         }
     }
 
-    pub fn set_jumppoints(&mut self, point: Point, grid: &PathingGrid) {
-        let value = self.forced_mask(&point, grid);
+    pub fn set_jumppoints(&mut self, point: Point) {
+        let value = self.forced_mask(&point);
         self.jump_point.set_point(point, value);
     }
     pub fn fix_jumppoints(&mut self, point: Point, grid: &PathingGrid) {
-        self.set_jumppoints(point, grid);
+        self.set_jumppoints(point);
         for p in grid.neighborhood_points(&point) {
             if grid.point_in_bounds(p) {
-                self.set_jumppoints(p, grid);
+                self.set_jumppoints(p);
             }
         }
     }
 
     /// Performs the full jump point precomputation
-    pub fn set_all_jumppoints(&mut self, grid: &PathingGrid) {
-        for x in 0..grid.width() {
-            for y in 0..grid.height() {
-                self.set_jumppoints(Point::new(x as i32, y as i32), grid);
+    pub fn set_all_jumppoints(&mut self) {
+        for x in 0..self.width() {
+            for y in 0..self.height() {
+                self.set_jumppoints(Point::new(x as i32, y as i32));
             }
         }
     }
+    /// Updates the neighbours
+    fn set(&mut self, x: i32, y: i32, blocked: bool) {
+        let p = Point::new(x, y);
+        self.update_neighbours(p.x, p.y, blocked);
+    }
 
+    pub fn update_all_neighbours(&mut self, grid: &PathingGrid) {
+        for x in 0..self.width() as i32 {
+            for y in 0..self.height() as i32 {
+                self.update_neighbours(x, y, grid.get(x, y));
+            }
+        }
+    }
     pub fn initialize(&mut self, grid: &PathingGrid) {
-        self.set_all_jumppoints(grid);
+        // Emulates 'placing' of blocked tile around map border to correctly initialize neighbours
+        // and make behaviour of a map bordered by tiles the same as a borderless map.
+        for i in -1..=(self.width() as i32) {
+            self.update_neighbours(i, -1, true);
+            self.update_neighbours(i, self.height() as i32, true);
+        }
+        for j in -1..=(self.height() as i32) {
+            self.update_neighbours(-1, j, true);
+            self.update_neighbours(self.width() as i32, j, true);
+        }
+        self.update_all_neighbours(grid);
+        self.set_all_jumppoints();
+    }
+}
+
+impl fmt::Display for JPSSolver {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "Neighbours:")?;
+        for y in 0..self.neighbours.height as i32 {
+            let values = (0..self.neighbours.width as i32)
+                .map(|x| self.neighbours.get(x, y) as i32)
+                .collect::<Vec<i32>>();
+            writeln!(f, "{:?}", values)?;
+        }
+        Ok(())
     }
 }

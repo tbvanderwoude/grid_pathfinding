@@ -24,10 +24,9 @@ fn verify_solution_distance_jps() {
 
         pathing_grid.grid = bool_grid.clone();
         pathing_grid.allow_diagonal_move = true;
-        pathing_grid.initialize();
         pathing_grid.generate_components();
         let mut solver = JPSSolver::new(&pathing_grid, false);
-        solver.set_all_jumppoints(&pathing_grid);
+        solver.initialize(&pathing_grid);
 
         for (start, end, distance) in &scenarios {
             println!("Start: {start}; End: {end}; Distance: {distance}");
@@ -56,7 +55,6 @@ fn verify_solution_distance_astar() {
             PathingGrid::new(bool_grid.width, bool_grid.height, true);
         pathing_grid.grid = bool_grid.clone();
         pathing_grid.allow_diagonal_move = true;
-        pathing_grid.initialize();
         pathing_grid.generate_components();
         for (start, end, distance) in &scenarios {
             println!("Start: {start}; End: {end}; Distance: {distance}");
