@@ -3,6 +3,7 @@
 use grid_pathfinding::{
     pathing_grid::PathingGrid,
     solver::{astar::AstarSolver, jps::JPSSolver, GridSolver},
+    ALLOW_CORNER_CUTTING,
 };
 use grid_util::*;
 use rand::prelude::*;
@@ -69,8 +70,10 @@ fn fuzz() {
 
 #[test]
 fn fuzz_distance() {
-    const N: usize = 5;
+    const N: usize = 10;
     const N_GRIDS: usize = 10000;
+    let tolerance = 0.001;
+
     let mut rng = StdRng::seed_from_u64(0);
     let astar_solver = AstarSolver::new();
 
@@ -98,17 +101,41 @@ fn fuzz_distance() {
 
                 let astar_cost = astar_solver.get_path_cost_float(&astar_path, &random_grid);
                 let jps_cost = jps_solver.get_path_cost_float(&jps_path, &random_grid);
-                if astar_cost >= 0.01 {
+                if astar_cost >= tolerance {
                     let delta_dist = (jps_cost - astar_cost).abs() / astar_cost;
-                    if delta_dist >= 0.01 {
-                        println!("Astar distance: {astar_cost}; JPS distance: {jps_cost}");
-                        println!("Astar path: {astar_path:?}\n JPS path: {jps_path:?}\n");
+                    if delta_dist >= tolerance {
+                        println!("Astar distance: {astar_cost:4}; JPS distance: {jps_cost:4}");
                         let grid_diag = random_grid.allow_diagonal_move;
-                        println!("diagonal: {diagonal}; grid_diag: {grid_diag}; improved_pruning: {improved_pruning}");
+                        println!("diagonal: {diagonal}; grid_diag: {grid_diag}; improved_pruning: {improved_pruning}; corner_cutting: {ALLOW_CORNER_CUTTING}");
 
-                        visualize_grid(&random_grid, &start, &end);
+                        let mut problem_start: Point = start;
+                        for (idx, &p) in jps_path.iter().enumerate().rev() {
+                            let jps_suffix = &jps_path[idx..].to_vec();
+                            let jps_suffix_cost =
+                                jps_solver.get_path_cost_float(jps_suffix, &random_grid);
+                            let astar_suffix_path = astar_solver
+                                .get_path_single_goal(&mut random_grid, p, end, false)
+                                .expect("A* should find a path from intermediate JPS node");
+                            let astar_suffix_cost =
+                                astar_solver.get_path_cost_float(&astar_suffix_path, &random_grid);
+
+                            let rel_diff = (jps_suffix_cost - astar_suffix_cost).abs()
+                                / astar_suffix_cost.max(1e-6);
+
+                            // First point where JPS suffix is no longer optimal
+                            if rel_diff >= tolerance {
+                                println!("=> First suboptimal JPS step at index {idx}, point {p:?}");
+                                println!("- JPS suffix from here: {jps_suffix:?}");
+                                println!("- A* optimal suffix:    {astar_suffix_path:?}");
+                                problem_start = p;
+                                break;
+                            }
+                        }
+
+                        visualize_grid(&random_grid, &problem_start, &end);
                     }
-                    assert!(delta_dist < 0.01);
+
+                    assert!(delta_dist < tolerance);
                 }
             }
         }
