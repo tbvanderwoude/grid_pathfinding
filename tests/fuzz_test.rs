@@ -12,7 +12,7 @@ fn random_grid(w: usize, h: usize, rng: &mut StdRng, diagonal: bool) -> PathingG
     pathing_grid.allow_diagonal_move = diagonal;
     for x in 0..pathing_grid.width() as i32 {
         for y in 0..pathing_grid.height() as i32 {
-            pathing_grid.set(x, y, rng.gen_bool(0.4))
+            pathing_grid.set(x, y, rng.random_bool(0.4))
         }
     }
     pathing_grid.generate_components();
