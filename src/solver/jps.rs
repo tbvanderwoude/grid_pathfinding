@@ -127,12 +127,12 @@ impl JPSSolver {
             n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
         } else if dir.diagonal() {
             n_mask = 0b10000011_u8.rotate_left(dir_num as u32);
-            // if !self.indexed_neighbor(node, 3 + dir_num) {
-            //     n_mask |= 1 << ((dir_num + 2) % 8);
-            // }
-            // if !self.indexed_neighbor(node, 5 + dir_num) {
-            //     n_mask |= 1 << ((dir_num + 6) % 8);
-            // }
+            if !grid.indexed_neighbor(node, 3 + dir_num) {
+                n_mask |= 1 << ((dir_num + 2) % 8);
+            }
+            if !grid.indexed_neighbor(node, 5 + dir_num) {
+                n_mask |= 1 << ((dir_num + 6) % 8);
+            }
         } else {
             if ALLOW_CORNER_CUTTING {
                 n_mask = 0b00000001 << dir_num;
@@ -143,8 +143,9 @@ impl JPSSolver {
                     n_mask |= 1 << ((dir_num + 7) % 8);
                 }
             } else {
-                neighbours &= 0b01010101;
-                n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
+                // TODO: look into whether this is minimal, this at least makes the algorithm
+                // optimal and complete following the no corner cutting rule
+                n_mask = 0b11010111_u8.rotate_left(dir_num as u32);
             }
         }
         let comb_mask = neighbours & n_mask;

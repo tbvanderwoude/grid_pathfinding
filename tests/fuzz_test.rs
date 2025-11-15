@@ -77,11 +77,11 @@ fn fuzz_distance() {
     for (diagonal, improved_pruning) in [(false, false), (true, false)] {
         let mut random_grids: Vec<PathingGrid> = Vec::new();
         for _ in 0..N_GRIDS {
-            random_grids.push(random_grid(N, N - 1, &mut rng, diagonal))
+            random_grids.push(random_grid(N, N, &mut rng, diagonal))
         }
 
         let start = Point::new(0, 0);
-        let end = Point::new(N as i32 - 1, N as i32 - 2);
+        let end = Point::new(N as i32 - 1, N as i32 - 1);
         for mut random_grid in random_grids {
             let mut jps_solver = JPSSolver::new(&random_grid, improved_pruning);
             random_grid.set_point(start, false);
