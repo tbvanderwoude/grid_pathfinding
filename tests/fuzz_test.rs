@@ -55,7 +55,7 @@ fn fuzz() {
             let mut solver = JPSSolver::new(&random_grid, improved_pruning);
             random_grid.set_point(start, false);
             random_grid.set_point(end, false);
-            solver.set_all_jumppoints(&random_grid);
+            solver.initialize(&random_grid);
             let reachable = random_grid.reachable(&start, &end);
             let path = solver.get_path_single_goal(&mut random_grid, start, end, false);
             // Show the grid if a path is not found
@@ -86,7 +86,7 @@ fn fuzz_distance() {
             let mut jps_solver = JPSSolver::new(&random_grid, improved_pruning);
             random_grid.set_point(start, false);
             random_grid.set_point(end, false);
-            jps_solver.set_all_jumppoints(&random_grid);
+            jps_solver.initialize(&random_grid);
             let reachable = random_grid.reachable(&start, &end);
             if reachable {
                 let jps_path = jps_solver

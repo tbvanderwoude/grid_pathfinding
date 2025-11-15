@@ -286,10 +286,12 @@ impl JPSSolver {
             }
         }
     }
-    /// Updates the neighbours
-    fn set(&mut self, x: i32, y: i32, blocked: bool) {
+
+    /// Updates the neighbours and jumppoints
+    fn set(&mut self, x: i32, y: i32, blocked: bool, grid: &PathingGrid) {
         let p = Point::new(x, y);
         self.update_neighbours(p.x, p.y, blocked);
+        self.fix_jumppoints(p, grid);
     }
 
     pub fn update_all_neighbours(&mut self, grid: &PathingGrid) {
