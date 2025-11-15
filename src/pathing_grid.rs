@@ -264,3 +264,91 @@ impl ValueGrid<bool> for PathingGrid {
         self.grid.height()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Tests whether points are correctly mapped to different connected components
+    #[test]
+    fn test_component_generation() {
+        // Corresponds to the following 3x3 grid:
+        //  ___
+        // | # |
+        // | # |
+        //  ___
+        let mut path_graph = PathingGrid::new(3, 2, false);
+        path_graph.grid.set(1, 0, true);
+        path_graph.grid.set(1, 1, true);
+        let f_ix = |p| path_graph.get_ix_point(p);
+        let p1 = Point::new(0, 0);
+        let p2 = Point::new(1, 1);
+        let p3 = Point::new(0, 1);
+        let p4 = Point::new(2, 0);
+        let p1_ix = f_ix(&p1);
+        let p2_ix = f_ix(&p2);
+        let p3_ix = f_ix(&p3);
+        let p4_ix = f_ix(&p4);
+        path_graph.generate_components();
+        assert!(!path_graph.components.equiv(p1_ix, p2_ix));
+        assert!(path_graph.components.equiv(p1_ix, p3_ix));
+        assert!(!path_graph.components.equiv(p1_ix, p4_ix));
+    }
+
+    #[test]
+    fn reachable_with_diagonals() {
+        let mut path_graph = PathingGrid::new(3, 2, false);
+        path_graph.grid.set(1, 0, true);
+        path_graph.grid.set(1, 1, true);
+        let p1 = Point::new(0, 0);
+        let p2 = Point::new(1, 0);
+        let p3 = Point::new(0, 1);
+        let p4 = Point::new(2, 0);
+        path_graph.generate_components();
+        assert!(path_graph.unreachable(&p1, &p2));
+        assert!(!path_graph.unreachable(&p1, &p3));
+        assert!(path_graph.unreachable(&p1, &p4));
+        assert!(!path_graph.neighbours_unreachable(&p1, &p2));
+        assert!(path_graph.neighbours_unreachable(&p1, &p4));
+    }
+
+    /// Asserts that the two corners are connected on a 4-grid.
+    #[test]
+    fn reachable_without_diagonals() {
+        // |S  |
+        // | # |
+        // |  G|
+        //  ___
+        let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
+        pathing_grid.allow_diagonal_move = false;
+        pathing_grid.set(1, 1, true);
+        pathing_grid.generate_components();
+        let start = Point::new(0, 0);
+        let end = Point::new(2, 2);
+        assert!(pathing_grid.reachable(&start, &end));
+    }
+    // Tests whether allowing diagonals has the expected effect on diagonal reachability in a minimal setting.
+    #[test]
+    fn test_diagonal_switch_reachable() {
+        //  ___
+        // | #|
+        // |# |
+        //  __
+        let mut pathing_grid: PathingGrid = PathingGrid::new(2, 2, true);
+        pathing_grid.allow_diagonal_move = false;
+        let mut pathing_grid_diag: PathingGrid = PathingGrid::new(2, 2, true);
+        for pathing_grid in [&mut pathing_grid, &mut pathing_grid_diag] {
+            pathing_grid.set(0, 0, false);
+            pathing_grid.set(1, 1, false);
+            pathing_grid.generate_components();
+        }
+        let start = Point::new(0, 0);
+        let end = Point::new(1, 1);
+        assert!(pathing_grid.unreachable(&start, &end));
+        if ALLOW_CORNER_CUTTING {
+            assert!(pathing_grid_diag.reachable(&start, &end));
+        } else {
+            assert!(pathing_grid_diag.unreachable(&start, &end));
+        }
+    }
+}
