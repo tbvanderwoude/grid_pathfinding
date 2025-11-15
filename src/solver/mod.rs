@@ -1,8 +1,14 @@
-use crate::{pathing_grid::PathingGrid, waypoints_to_path, EQUAL_EDGE_COST};
+use crate::{C, EQUAL_EDGE_COST, pathing_grid::PathingGrid, waypoints_to_path};
 use grid_util::Point;
 
 pub mod astar;
 pub mod jps;
+
+/// Converts the integer cost to an approximate floating point equivalent where cardinal directions have cost 1.0.
+pub fn convert_cost_to_unit_cost_float(cost: i32) -> f64 {
+    (cost as f64) / (C as f64)
+}
+
 pub trait GridSolver {
     type Successors: IntoIterator<Item = (Point, i32)>;
 
@@ -32,7 +38,9 @@ pub trait GridSolver {
         }
         total_cost_int
     }
-
+    fn get_path_cost_float(&self, path: Vec<Point>, pathing_grid: &PathingGrid) -> f64 {
+        convert_cost_to_unit_cost_float(self.get_path_cost(path, pathing_grid))
+    }
     fn get_path_single_goal(
         &self,
         grid: &mut PathingGrid,

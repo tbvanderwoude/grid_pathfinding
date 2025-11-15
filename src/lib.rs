@@ -32,10 +32,7 @@ const D: i32 = if EQUAL_EDGE_COST { 1 } else { 99 };
 const C: i32 = if EQUAL_EDGE_COST { 1 } else { 70 };
 const E: i32 = 2 * C - D;
 
-/// Converts the integer cost to an approximate floating point equivalent where cardinal directions have cost 1.0.
-pub fn convert_cost_to_unit_cost_float(cost: i32) -> f64 {
-    (cost as f64) / (C as f64)
-}
+
 
 /// Helper function for debugging binary representations of neighborhoods.
 pub fn explain_bin_neighborhood(nn: u8) {
