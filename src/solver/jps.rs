@@ -3,7 +3,7 @@ use grid_util::{Direction, Point, SimpleValueGrid, ValueGrid};
 use smallvec::SmallVec;
 
 use crate::{
-    pathing_grid::PathingGrid, solver::GridSolver, ALLOW_CORNER_CUTTING, C, D, E, N_SMALLVEC_SIZE,
+    pathing_grid::PathingGrid, solver::GridSolver, ALLOW_CORNER_CUTTING, C, D, N_SMALLVEC_SIZE,
 };
 
 #[derive(Clone, Debug)]

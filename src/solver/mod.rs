@@ -2,6 +2,7 @@ use crate::{pathing_grid::PathingGrid, waypoints_to_path, C, D, E, EQUAL_EDGE_CO
 use grid_util::Point;
 
 pub mod astar;
+pub mod dijkstra;
 pub mod jps;
 
 /// Converts the integer cost to an approximate floating point equivalent where cardinal directions have cost 1.0.

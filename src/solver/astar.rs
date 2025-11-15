@@ -1,7 +1,7 @@
 use grid_util::Point;
 use smallvec::SmallVec;
 
-use crate::{pathing_grid::PathingGrid, solver::GridSolver, C, D, E, N_SMALLVEC_SIZE};
+use crate::{pathing_grid::PathingGrid, solver::GridSolver, N_SMALLVEC_SIZE};
 
 #[derive(Clone, Debug)]
 pub struct AstarSolver {
