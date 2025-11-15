@@ -1,4 +1,4 @@
-use crate::{C, EQUAL_EDGE_COST, pathing_grid::PathingGrid, waypoints_to_path};
+use crate::{pathing_grid::PathingGrid, waypoints_to_path, C, EQUAL_EDGE_COST};
 use grid_util::Point;
 
 pub mod astar;
@@ -26,7 +26,7 @@ pub trait GridSolver {
     where
         F: Fn(&Point) -> bool;
 
-    fn get_path_cost(&self, path: Vec<Point>, pathing_grid: &PathingGrid) -> i32 {
+    fn get_path_cost(&self, path: &Vec<Point>, pathing_grid: &PathingGrid) -> i32 {
         let mut v = path[0];
         let n = path.len();
         let mut total_cost_int = 0;
@@ -38,7 +38,7 @@ pub trait GridSolver {
         }
         total_cost_int
     }
-    fn get_path_cost_float(&self, path: Vec<Point>, pathing_grid: &PathingGrid) -> f64 {
+    fn get_path_cost_float(&self, path: &Vec<Point>, pathing_grid: &PathingGrid) -> f64 {
         convert_cost_to_unit_cost_float(self.get_path_cost(path, pathing_grid))
     }
     fn get_path_single_goal(
