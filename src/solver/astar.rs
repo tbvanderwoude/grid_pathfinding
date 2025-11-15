@@ -31,9 +31,10 @@ impl GridSolver for AstarSolver {
     {
         grid.neighborhood_points_and_cost(node)
     }
+
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
-    fn heuristic(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32 {
-        ((if grid.allow_diagonal_move {
+    fn cost(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32 {
+        if grid.allow_diagonal_move {
             let delta_x = (p1.x - p2.x).abs();
             let delta_y = (p1.y - p2.y).abs();
             // Formula from https://github.com/riscy/a_star_on_grids
@@ -42,7 +43,11 @@ impl GridSolver for AstarSolver {
             (E * (delta_x - delta_y).abs() + D * (delta_x + delta_y)) / 2
         } else {
             p1.manhattan_distance(p2) * C
-        }) as f32
-            * self.heuristic_factor) as i32
+        }
+    }
+
+    /// Just the cost times a heuristic factor.
+    fn heuristic(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32 {
+        (self.cost(grid, p1, p2) as f32 * self.heuristic_factor) as i32
     }
 }

@@ -27,7 +27,7 @@ fn verify_solution_distance_jps() {
         pathing_grid.allow_diagonal_move = true;
         pathing_grid.initialize();
         pathing_grid.generate_components();
-        let mut solver = JPSSolver::new(&pathing_grid);
+        let mut solver = JPSSolver::new(&pathing_grid, false);
         solver.set_all_jumppoints(&pathing_grid);
 
         for (start, end, distance) in &scenarios {
@@ -35,16 +35,8 @@ fn verify_solution_distance_jps() {
             let path = solver
                 .get_path_single_goal(&mut pathing_grid, *start, *end, false)
                 .unwrap();
-            let mut v = path[0];
-            let n = path.len();
-            let mut total_cost_int = 0;
-            for i in 1..n {
-                let v_old = v;
-                v = path[i];
-                let cost = solver.heuristic(&pathing_grid, &v_old, &v);
-                total_cost_int += cost;
-            }
-            save_path(path, "path.csv").unwrap();
+            save_path(path.clone(), "path.csv").unwrap();
+            let total_cost_int = solver.get_path_cost(path, &pathing_grid);
             let float_cost = convert_cost_to_unit_cost_float(total_cost_int);
             println!("My distance: {float_cost}");
             if *distance >= 0.01 {
@@ -73,16 +65,8 @@ fn verify_solution_distance_astar() {
             let path = solver
                 .get_path_single_goal(&mut pathing_grid, *start, *end, false)
                 .unwrap();
-            let mut v = path[0];
-            let n = path.len();
-            let mut total_cost_int = 0;
-            for i in 1..n {
-                let v_old = v;
-                v = path[i];
-                let cost = solver.heuristic(&pathing_grid, &v_old, &v);
-                total_cost_int += cost;
-            }
-            save_path(path, "path.csv").unwrap();
+            save_path(path.clone(), "path.csv").unwrap();
+            let total_cost_int = solver.get_path_cost(path, &pathing_grid);
             let float_cost = convert_cost_to_unit_cost_float(total_cost_int);
             println!("My distance: {float_cost}");
             if *distance >= 0.01 {

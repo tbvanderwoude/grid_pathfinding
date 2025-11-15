@@ -8,7 +8,6 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct JPSSolver {
     pub jump_point: SimpleValueGrid<u8>,
-    pub heuristic_factor: f32,
     pub improved_pruning: bool,
 }
 
@@ -73,13 +72,17 @@ impl GridSolver for JPSSolver {
             p1.manhattan_distance(p2) * C
         }
     }
+
+    /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
+    fn cost(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32 {
+        self.heuristic(grid, p1, p2)
+    }
 }
 impl JPSSolver {
-    pub fn new(grid: &PathingGrid) -> JPSSolver {
+    pub fn new(grid: &PathingGrid, improved_pruning: bool) -> JPSSolver {
         let mut solver = JPSSolver {
             jump_point: SimpleValueGrid::new(grid.width(), grid.height(), 0),
-            improved_pruning: true,
-            heuristic_factor: 1.0,
+            improved_pruning,
         };
         solver.initialize(grid);
         solver

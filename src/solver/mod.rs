@@ -7,6 +7,9 @@ pub trait GridSolver {
     type Successors: IntoIterator<Item = (Point, i32)>;
 
     fn heuristic(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32;
+
+    fn cost(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32;
+
     fn successors<F>(
         &self,
         grid: &PathingGrid,
@@ -16,6 +19,19 @@ pub trait GridSolver {
     ) -> Self::Successors
     where
         F: Fn(&Point) -> bool;
+
+    fn get_path_cost(&self, path: Vec<Point>, pathing_grid: &PathingGrid) -> i32 {
+        let mut v = path[0];
+        let n = path.len();
+        let mut total_cost_int = 0;
+        for i in 1..n {
+            let v_old = v;
+            v = path[i];
+            let cost = self.cost(&pathing_grid, &v_old, &v);
+            total_cost_int += cost;
+        }
+        total_cost_int
+    }
 
     fn get_path_single_goal(
         &self,
