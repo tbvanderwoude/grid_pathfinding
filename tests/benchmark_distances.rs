@@ -1,6 +1,5 @@
 use grid_pathfinding::pathing_grid::PathingGrid;
 use grid_pathfinding::solver::{astar::AstarSolver, jps::JPSSolver, GridSolver};
-use grid_pathfinding::*;
 use grid_pathfinding_benchmark::get_benchmark;
 use grid_util::*;
 use std::fs::File;

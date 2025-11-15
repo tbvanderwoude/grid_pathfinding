@@ -160,7 +160,7 @@ impl Pathfinder {
         let mut forced_mask: u8 = 0;
         for dir_num in 0..8 {
             if dir_num % 2 == 1 {
-                if !self.indexed_neighbor(node, 3 + dir_num)
+                if ALLOW_CORNER_CUTTING && !self.indexed_neighbor(node, 3 + dir_num)
                     || !self.indexed_neighbor(node, 5 + dir_num)
                 {
                     forced_mask |= 1 << dir_num;
@@ -196,12 +196,18 @@ impl Pathfinder {
                 n_mask |= 1 << ((dir_num + 6) % 8);
             }
         } else {
-            n_mask = 0b00000001 << dir_num;
-            if !self.indexed_neighbor(node, 2 + dir_num) {
-                n_mask |= 1 << ((dir_num + 1) % 8);
-            }
-            if !self.indexed_neighbor(node, 6 + dir_num) {
-                n_mask |= 1 << ((dir_num + 7) % 8);
+            if ALLOW_CORNER_CUTTING {
+                n_mask = 0b00000001 << dir_num;
+                if !self.indexed_neighbor(node, 2 + dir_num) {
+                    n_mask |= 1 << ((dir_num + 1) % 8);
+                }
+                if !self.indexed_neighbor(node, 6 + dir_num) {
+                    n_mask |= 1 << ((dir_num + 7) % 8);
+                }
+            } else {
+                // TODO: look into whether this is minimal, this at least makes the algorithm
+                // optimal and complete following the no corner cutting rule
+                n_mask = 0b11010111_u8.rotate_left(dir_num as u32);
             }
         }
         let comb_mask = neighbours & n_mask;
@@ -277,13 +283,22 @@ impl Pathfinder {
             // When using a 4-neighborhood (specified by setting allow_diagonal_move to false),
             // jumps perpendicular to the direction are performed. This is necessary to not miss the
             // goal when passing by.
-            if !self.allow_diagonal_move {
+            if !self.allow_diagonal_move || !ALLOW_CORNER_CUTTING && !direction.diagonal() {
                 let perp_1 = direction.rotate_ccw(2);
                 let perp_2 = direction.rotate_cw(2);
                 if self.jump_straight(initial, 1, perp_1, goal).is_some()
                     || self.jump_straight(initial, 1, perp_2, goal).is_some()
                 {
                     return Some((initial, cost));
+                }
+                if !ALLOW_CORNER_CUTTING && !direction.diagonal() {
+                    let diag_1 = direction.rotate_ccw(1);
+                    let diag_2 = direction.rotate_cw(1);
+                    if self.jump(initial, 1, diag_1, goal).is_some()
+                        || self.jump(initial, 1, diag_2, goal).is_some()
+                    {
+                        return Some((initial, cost));
+                    }
                 }
             }
 
