@@ -15,10 +15,9 @@ fn dao_bench<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     } else {
         smallvec![false]
     };
-    let bench_set = if ALLOW_DIAGONAL{
+    let bench_set = if ALLOW_DIAGONAL {
         ["dao/arena", "dao/den312d", "dao/arena2"]
-    }
-    else{
+    } else {
         ["dao/arena", "dao/den009d", "dao/den312d"]
     };
     for pruning in arr {
@@ -50,10 +49,9 @@ fn dao_bench_jps<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     } else {
         smallvec![false]
     };
-    let bench_set = if ALLOW_DIAGONAL{
+    let bench_set = if ALLOW_DIAGONAL {
         ["dao/arena", "dao/den312d", "dao/arena2"]
-    }
-    else{
+    } else {
         ["dao/arena", "dao/den009d", "dao/den312d"]
     };
     for pruning in arr {
@@ -129,13 +127,13 @@ fn dao_bench_dijkstra<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    dao_bench<false>,
-    dao_bench<true>,
-    dao_bench_jps<false>,
+    // dao_bench<false>,
+    // dao_bench<true>,
+    // dao_bench_jps<false>,
     dao_bench_jps<true>,
-    dao_bench_astar<false>,
-    dao_bench_astar<true>,
-    dao_bench_dijkstra<false>,
-    dao_bench_dijkstra<true>
+    // dao_bench_astar<false>,
+    // dao_bench_astar<true>,
+    // dao_bench_dijkstra<false>,
+    // dao_bench_dijkstra<true>
 );
 criterion_main!(benches);

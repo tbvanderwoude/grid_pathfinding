@@ -30,7 +30,7 @@ impl GridSolver for JPSSolver {
             Some(parent_node) => {
                 let mut succ = SmallVec::new();
                 let dir = parent_node.dir_obj(node);
-                for (n, c) in self.pruned_neighborhood(dir, node, grid) {
+                for (n, c) in self.pruned_neighborhood::<ALLOW_DIAGONAL>(dir, node) {
                     let dir = node.dir_obj(&n);
                     // Jumps the neighbor, skipping over unnecessary nodes.
                     if let Some((jumped_node, cost)) = self.jump(*node, c, dir, goal, grid) {
@@ -143,7 +143,6 @@ impl JPSSolver {
         &self,
         dir: Direction,
         node: &'a Point,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
     ) -> impl Iterator<Item = (Point, i32)> + 'a {
         let dir_num = dir.num();
         let mut n_mask: u8;
