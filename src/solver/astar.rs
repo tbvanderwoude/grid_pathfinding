@@ -19,9 +19,9 @@ impl AstarSolver {
 impl GridSolver for AstarSolver {
     type Successors = SmallVec<[(Point, i32); N_SMALLVEC_SIZE]>;
 
-    fn successors<F>(
+    fn successors<const ALLOW_DIAGONAL: bool, F>(
         &self,
-        grid: &PathingGrid,
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
         _parent: Option<&Point>,
         node: &Point,
         _goal: &F,
@@ -33,7 +33,12 @@ impl GridSolver for AstarSolver {
     }
 
     /// Just the normal cost times a heuristic factor.
-    fn heuristic(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32 {
+    fn heuristic<const ALLOW_DIAGONAL: bool>(
+        &self,
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        p1: &Point,
+        p2: &Point,
+    ) -> i32 {
         (self.cost(grid, p1, p2) as f32 * self.heuristic_factor) as i32
     }
 }
@@ -49,94 +54,134 @@ mod tests {
     /// Asserts that the case in which start and goal are equal is handled correctly.
     #[test]
     fn equal_start_goal() {
-        for allow_diag in [false, true] {
-            let mut pathing_grid: PathingGrid = PathingGrid::new(1, 1, false);
-            pathing_grid.allow_diagonal_move = allow_diag;
-            pathing_grid.generate_components();
-            let solver = AstarSolver::new();
-            let start = Point::new(0, 0);
-            let path = solver
-                .get_path_single_goal(&mut pathing_grid, start, start, false)
-                .unwrap();
-            assert!(path.len() == 1);
-        }
+        let mut pathing_grid: PathingGrid<false> = PathingGrid::new(1, 1, false);
+        pathing_grid.generate_components();
+        let solver = AstarSolver::new();
+        let start = Point::new(0, 0);
+        let path = solver
+            .get_path_single_goal(&mut pathing_grid, start, start, false)
+            .unwrap();
+        assert!(path.len() == 1);
+    }
+
+    /// Asserts that the case in which start and goal are equal is handled correctly.
+    #[test]
+    fn equal_start_goal_diagonal() {
+        let mut pathing_grid: PathingGrid<true> = PathingGrid::new(1, 1, false);
+        pathing_grid.generate_components();
+        let solver = AstarSolver::new();
+        let start = Point::new(0, 0);
+        let path = solver
+            .get_path_single_goal(&mut pathing_grid, start, start, false)
+            .unwrap();
+        assert!(path.len() == 1);
     }
 
     /// Asserts that the optimal 4 step solution is found.
     #[test]
     fn solve_simple_problem() {
-        let arr = if ALLOW_CORNER_CUTTING {
-            [(false, 5), (true, 4)]
-        } else {
-            [(false, 5), (true, 5)]
-        };
-        for (allow_diag, expected) in arr {
-            let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
-            pathing_grid.allow_diagonal_move = allow_diag;
-            pathing_grid.set(1, 1, true);
-            pathing_grid.generate_components();
-            let solver = AstarSolver::new();
+        let expected = 5;
+        let mut pathing_grid: PathingGrid<false> = PathingGrid::new(3, 3, false);
+        pathing_grid.set(1, 1, true);
+        pathing_grid.generate_components();
+        let solver = AstarSolver::new();
 
-            let start = Point::new(0, 0);
-            let end = Point::new(2, 2);
-            let path = solver
-                .get_path_single_goal(&mut pathing_grid, start, end, false)
-                .unwrap();
-            assert!(path.len() == expected);
-        }
+        let start = Point::new(0, 0);
+        let end = Point::new(2, 2);
+        let path = solver
+            .get_path_single_goal(&mut pathing_grid, start, end, false)
+            .unwrap();
+        assert!(path.len() == expected);
+    }
+
+    /// Asserts that the optimal 4 step solution is found.
+    #[test]
+    fn solve_simple_problem_diagonal() {
+        let expected = if ALLOW_CORNER_CUTTING { 4 } else { 5 };
+        let mut pathing_grid: PathingGrid<true> = PathingGrid::new(3, 3, false);
+        pathing_grid.set(1, 1, true);
+        pathing_grid.generate_components();
+        let solver = AstarSolver::new();
+
+        let start = Point::new(0, 0);
+        let end = Point::new(2, 2);
+        let path = solver
+            .get_path_single_goal(&mut pathing_grid, start, end, false)
+            .unwrap();
+        assert!(path.len() == expected);
     }
 
     #[test]
     fn test_multiple_goals() {
-        let arr = if ALLOW_CORNER_CUTTING {
-            [(false, 7), (true, 5)]
-        } else {
-            [(false, 7), (true, 6)]
-        };
-        for (allow_diag, expected) in arr {
-            let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
-            pathing_grid.allow_diagonal_move = allow_diag;
-            pathing_grid.set(1, 1, true);
-            pathing_grid.generate_components();
-            let solver = AstarSolver::new();
-            let start = Point::new(0, 0);
-            let goal_1 = Point::new(4, 4);
-            let goal_2 = Point::new(3, 3);
-            let goals = vec![&goal_1, &goal_2];
-            let (selected_goal, path) = solver
-                .get_path_multiple_goals(&mut pathing_grid, start, goals)
-                .unwrap();
-            assert_eq!(selected_goal, Point::new(3, 3));
-            assert!(path.len() == expected);
-        }
+        let expected = 7;
+        let mut pathing_grid: PathingGrid<false> = PathingGrid::new(5, 5, false);
+        pathing_grid.set(1, 1, true);
+        pathing_grid.generate_components();
+        let solver = AstarSolver::new();
+        let start = Point::new(0, 0);
+        let goal_1 = Point::new(4, 4);
+        let goal_2 = Point::new(3, 3);
+        let goals = vec![&goal_1, &goal_2];
+        let (selected_goal, path) = solver
+            .get_path_multiple_goals(&mut pathing_grid, start, goals)
+            .unwrap();
+        assert_eq!(selected_goal, Point::new(3, 3));
+        assert!(path.len() == expected);
     }
 
     #[test]
-    fn test_complex() {
-        let arr = if ALLOW_CORNER_CUTTING {
-            [(false, 15), (true, 10)]
-        } else {
-            [(false, 15), (true, 11)]
-        };
-        for (allow_diag, expected) in arr {
-            let mut pathing_grid: PathingGrid = PathingGrid::new(10, 10, false);
-            pathing_grid.set_rect(Rect::new(1, 1, 1, 1), true);
-            pathing_grid.set_rect(Rect::new(5, 0, 1, 1), true);
-            pathing_grid.set_rect(Rect::new(0, 5, 1, 1), true);
-            pathing_grid.set_rect(Rect::new(8, 8, 1, 1), true);
-            pathing_grid.allow_diagonal_move = allow_diag;
-            pathing_grid.generate_components();
-            let solver = AstarSolver::new();
-
-            let start = Point::new(0, 0);
-            let end = Point::new(7, 7);
-            let path = solver
-                .get_path_single_goal(&mut pathing_grid, start, end, false)
-                .unwrap();
-            assert!(path.len() == expected);
-        }
+    fn test_multiple_goal_diagonal() {
+        let expected = if ALLOW_CORNER_CUTTING { 5 } else { 6 };
+        let mut pathing_grid: PathingGrid<true> = PathingGrid::new(5, 5, false);
+        pathing_grid.set(1, 1, true);
+        pathing_grid.generate_components();
+        let solver = AstarSolver::new();
+        let start = Point::new(0, 0);
+        let goal_1 = Point::new(4, 4);
+        let goal_2 = Point::new(3, 3);
+        let goals = vec![&goal_1, &goal_2];
+        let (selected_goal, path) = solver
+            .get_path_multiple_goals(&mut pathing_grid, start, goals)
+            .unwrap();
+        assert_eq!(selected_goal, Point::new(3, 3));
+        assert!(path.len() == expected);
     }
+    #[test]
+    fn test_complex() {
+        let expected = 15;
+        let mut pathing_grid: PathingGrid<false> = PathingGrid::new(10, 10, false);
+        pathing_grid.set_rect(Rect::new(1, 1, 1, 1), true);
+        pathing_grid.set_rect(Rect::new(5, 0, 1, 1), true);
+        pathing_grid.set_rect(Rect::new(0, 5, 1, 1), true);
+        pathing_grid.set_rect(Rect::new(8, 8, 1, 1), true);
+        pathing_grid.generate_components();
+        let solver = AstarSolver::new();
 
+        let start = Point::new(0, 0);
+        let end = Point::new(7, 7);
+        let path = solver
+            .get_path_single_goal(&mut pathing_grid, start, end, false)
+            .unwrap();
+        assert!(path.len() == expected);
+    }
+    #[test]
+    fn test_complex_diagonal() {
+        let expected = if ALLOW_CORNER_CUTTING { 10 } else { 11 };
+        let mut pathing_grid: PathingGrid<true> = PathingGrid::new(10, 10, false);
+        pathing_grid.set_rect(Rect::new(1, 1, 1, 1), true);
+        pathing_grid.set_rect(Rect::new(5, 0, 1, 1), true);
+        pathing_grid.set_rect(Rect::new(0, 5, 1, 1), true);
+        pathing_grid.set_rect(Rect::new(8, 8, 1, 1), true);
+        pathing_grid.generate_components();
+        let solver = AstarSolver::new();
+
+        let start = Point::new(0, 0);
+        let end = Point::new(7, 7);
+        let path = solver
+            .get_path_single_goal(&mut pathing_grid, start, end, false)
+            .unwrap();
+        assert!(path.len() == expected);
+    }
     // Tests whether allowing diagonals has the expected effect on path existence in a minimal setting.
     #[test]
     fn test_diagonal_switch_path() {
@@ -144,14 +189,14 @@ mod tests {
         // | #|
         // |# |
         //  __
-        let mut pathing_grid: PathingGrid = PathingGrid::new(2, 2, true);
-        pathing_grid.allow_diagonal_move = false;
-        let mut pathing_grid_diag: PathingGrid = PathingGrid::new(2, 2, true);
-        for pathing_grid in [&mut pathing_grid, &mut pathing_grid_diag] {
-            pathing_grid.set(0, 0, false);
-            pathing_grid.set(1, 1, false);
-            pathing_grid.generate_components();
-        }
+        let mut pathing_grid: PathingGrid<false> = PathingGrid::new(2, 2, true);
+        let mut pathing_grid_diag: PathingGrid<true> = PathingGrid::new(2, 2, true);
+        pathing_grid.set(0, 0, false);
+        pathing_grid.set(1, 1, false);
+        pathing_grid.generate_components();
+        pathing_grid_diag.set(0, 0, false);
+        pathing_grid_diag.set(1, 1, false);
+        pathing_grid_diag.generate_components();
         let solver = AstarSolver::new();
 
         let start = Point::new(0, 0);

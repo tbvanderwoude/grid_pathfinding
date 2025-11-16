@@ -7,6 +7,7 @@
 //! pathfinding. Note that this assumes a uniform-cost grid. Pre-computes
 //! [connected components](https://en.wikipedia.org/wiki/Component_(graph_theory))
 //! to avoid flood-filling behaviour if no path exists.
+
 mod astar_jps;
 pub mod pathing_grid;
 pub mod solver;

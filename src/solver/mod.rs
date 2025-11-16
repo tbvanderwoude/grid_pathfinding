@@ -13,11 +13,21 @@ pub fn convert_cost_to_unit_cost_float(cost: i32) -> f64 {
 pub trait GridSolver {
     type Successors: IntoIterator<Item = (Point, i32)>;
 
-    fn heuristic(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32;
+    fn heuristic<const ALLOW_DIAGONAL: bool>(
+        &self,
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        p1: &Point,
+        p2: &Point,
+    ) -> i32;
 
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
-    fn cost(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32 {
-        if grid.allow_diagonal_move {
+    fn cost<const ALLOW_DIAGONAL: bool>(
+        &self,
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        p1: &Point,
+        p2: &Point,
+    ) -> i32 {
+        if ALLOW_DIAGONAL {
             let delta_x = (p1.x - p2.x).abs();
             let delta_y = (p1.y - p2.y).abs();
             // Formula from https://github.com/riscy/a_star_on_grids
@@ -29,9 +39,9 @@ pub trait GridSolver {
         }
     }
 
-    fn successors<F>(
+    fn successors<const ALLOW_DIAGONAL: bool, F>(
         &self,
-        grid: &PathingGrid,
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
         parent: Option<&Point>,
         node: &Point,
         goal: &F,
@@ -39,7 +49,11 @@ pub trait GridSolver {
     where
         F: Fn(&Point) -> bool;
 
-    fn get_path_cost(&self, path: &Vec<Point>, pathing_grid: &PathingGrid) -> i32 {
+    fn get_path_cost<const ALLOW_DIAGONAL: bool>(
+        &self,
+        path: &Vec<Point>,
+        pathing_grid: &PathingGrid<ALLOW_DIAGONAL>,
+    ) -> i32 {
         let mut v = path[0];
         let n = path.len();
         let mut total_cost_int = 0;
@@ -51,12 +65,16 @@ pub trait GridSolver {
         }
         total_cost_int
     }
-    fn get_path_cost_float(&self, path: &Vec<Point>, pathing_grid: &PathingGrid) -> f64 {
+    fn get_path_cost_float<const ALLOW_DIAGONAL: bool>(
+        &self,
+        path: &Vec<Point>,
+        pathing_grid: &PathingGrid<ALLOW_DIAGONAL>,
+    ) -> f64 {
         convert_cost_to_unit_cost_float(self.get_path_cost(path, pathing_grid))
     }
-    fn get_path_single_goal(
+    fn get_path_single_goal<const ALLOW_DIAGONAL: bool>(
         &self,
-        grid: &mut PathingGrid,
+        grid: &mut PathingGrid<ALLOW_DIAGONAL>,
         start: Point,
         goal: Point,
         approximate: bool,
@@ -65,9 +83,9 @@ pub trait GridSolver {
             .map(waypoints_to_path)
     }
     /// The raw waypoints (jump points) from which [get_path_single_goal](Self::get_path_single_goal) makes a path.
-    fn get_waypoints_single_goal(
+    fn get_waypoints_single_goal<const ALLOW_DIAGONAL: bool>(
         &self,
-        grid: &mut PathingGrid,
+        grid: &mut PathingGrid<ALLOW_DIAGONAL>,
         start: Point,
         goal: Point,
         approximate: bool,
@@ -108,9 +126,9 @@ pub trait GridSolver {
         .map(|(v, _c)| v)
     }
     /// Computes a path from the start to one of the given goals and returns the selected goal in addition to the found path. Otherwise behaves similar to [get_path_single_goal](Self::get_path_single_goal).
-    fn get_path_multiple_goals(
+    fn get_path_multiple_goals<const ALLOW_DIAGONAL: bool>(
         &self,
-        grid: &mut PathingGrid,
+        grid: &mut PathingGrid<ALLOW_DIAGONAL>,
         start: Point,
         goals: Vec<&Point>,
     ) -> Option<(Point, Vec<Point>)> {
@@ -118,9 +136,9 @@ pub trait GridSolver {
             .map(|(x, y)| (x, waypoints_to_path(y)))
     }
     /// The raw waypoints (jump points) from which [get_path_multiple_goals](Self::get_path_multiple_goals) makes a path.
-    fn get_waypoints_multiple_goals(
+    fn get_waypoints_multiple_goals<const ALLOW_DIAGONAL: bool>(
         &self,
-        grid: &mut PathingGrid,
+        grid: &mut PathingGrid<ALLOW_DIAGONAL>,
         start: Point,
         goals: Vec<&Point>,
     ) -> Option<(Point, Vec<Point>)> {

@@ -7,19 +7,18 @@ use grid_pathfinding_benchmark::*;
 use grid_util::grid::ValueGrid;
 use std::hint::black_box;
 
-fn dao_bench_single(c: &mut Criterion) {
-    for (allow_diag, pruning) in [(true, false)] {
+fn dao_bench_single<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
+    for pruning in [false] {
         let bench_set = ["dao/arena"];
         for name in bench_set {
             let (bool_grid, scenarios) = get_benchmark(name.to_owned());
-            let mut pathing_grid: PathingGrid =
+            let mut pathing_grid: PathingGrid<ALLOW_DIAGONAL> =
                 PathingGrid::new(bool_grid.width, bool_grid.height, true);
             pathing_grid.grid = bool_grid.clone();
-            pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.generate_components();
             let mut solver = JPSSolver::new(&pathing_grid, pruning);
             solver.initialize(&pathing_grid);
-            let diag_str = if allow_diag { "8-grid" } else { "4-grid" };
+            let diag_str = if ALLOW_DIAGONAL { "8-grid" } else { "4-grid" };
             let improved_str = if pruning { " (improved pruning)" } else { "" };
 
             c.bench_function(format!("{name}, {diag_str}{improved_str}").as_str(), |b| {
@@ -38,5 +37,5 @@ fn dao_bench_single(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, dao_bench_single);
+criterion_group!(benches, dao_bench_single<false>, dao_bench_single<true>);
 criterion_main!(benches);

@@ -7,10 +7,14 @@ use grid_pathfinding::{
 };
 use grid_util::*;
 use rand::prelude::*;
+use smallvec::{smallvec, SmallVec};
 
-fn random_grid(w: usize, h: usize, rng: &mut StdRng, diagonal: bool) -> PathingGrid {
-    let mut pathing_grid: PathingGrid = PathingGrid::new(w, h, false);
-    pathing_grid.allow_diagonal_move = diagonal;
+fn random_grid<const ALLOW_DIAGONAL: bool>(
+    w: usize,
+    h: usize,
+    rng: &mut StdRng,
+) -> PathingGrid<ALLOW_DIAGONAL> {
+    let mut pathing_grid: PathingGrid<ALLOW_DIAGONAL> = PathingGrid::new(w, h, false);
     for x in 0..pathing_grid.width() as i32 {
         for y in 0..pathing_grid.height() as i32 {
             pathing_grid.set(x, y, rng.random_bool(0.4))
@@ -20,7 +24,11 @@ fn random_grid(w: usize, h: usize, rng: &mut StdRng, diagonal: bool) -> PathingG
     pathing_grid
 }
 
-fn visualize_grid(grid: &PathingGrid, start: &Point, end: &Point) {
+fn visualize_grid<const ALLOW_DIAGONAL: bool>(
+    grid: &PathingGrid<ALLOW_DIAGONAL>,
+    start: &Point,
+    end: &Point,
+) {
     let grid = &grid.grid;
     for y in (0..grid.height as i32).rev() {
         for x in 0..grid.width as i32 {
@@ -39,15 +47,19 @@ fn visualize_grid(grid: &PathingGrid, start: &Point, end: &Point) {
     }
 }
 
-#[test]
-fn fuzz() {
+fn reachable_fuzzer<const ALLOW_DIAGONAL: bool>() {
     const N: usize = 10;
     const N_GRIDS: usize = 10000;
     let mut rng = StdRng::seed_from_u64(0);
-    for (diagonal, improved_pruning) in [(false, false), (true, false), (true, true)] {
-        let mut random_grids: Vec<PathingGrid> = Vec::new();
+    let arr: SmallVec<[bool; 2]> = if ALLOW_DIAGONAL {
+        smallvec![false, true]
+    } else {
+        smallvec![false]
+    };
+    for improved_pruning in arr {
+        let mut random_grids: Vec<PathingGrid<ALLOW_DIAGONAL>> = Vec::new();
         for _ in 0..N_GRIDS {
-            random_grids.push(random_grid(N, N, &mut rng, diagonal))
+            random_grids.push(random_grid(N, N, &mut rng))
         }
 
         let start = Point::new(0, 0);
@@ -68,19 +80,22 @@ fn fuzz() {
     }
 }
 
-#[test]
-fn fuzz_distance() {
+fn distance_fuzzer<const ALLOW_DIAGONAL: bool>() {
     const N: usize = 10;
     const N_GRIDS: usize = 10000;
     let tolerance = 0.001;
 
     let mut rng = StdRng::seed_from_u64(0);
     let astar_solver = AstarSolver::new();
-
-    for (diagonal, improved_pruning) in [(false, false), (true, false)] {
-        let mut random_grids: Vec<PathingGrid> = Vec::new();
+    let arr: SmallVec<[bool; 2]> = if ALLOW_DIAGONAL {
+        smallvec![false, true]
+    } else {
+        smallvec![false]
+    };
+    for improved_pruning in arr {
+        let mut random_grids: Vec<PathingGrid<ALLOW_DIAGONAL>> = Vec::new();
         for _ in 0..N_GRIDS {
-            random_grids.push(random_grid(N, N, &mut rng, diagonal))
+            random_grids.push(random_grid(N, N, &mut rng))
         }
 
         let start = Point::new(0, 0);
@@ -105,8 +120,7 @@ fn fuzz_distance() {
                     let delta_dist = (jps_cost - astar_cost).abs() / astar_cost;
                     if delta_dist >= tolerance {
                         println!("Astar distance: {astar_cost:4}; JPS distance: {jps_cost:4}");
-                        let grid_diag = random_grid.allow_diagonal_move;
-                        println!("diagonal: {diagonal}; grid_diag: {grid_diag}; improved_pruning: {improved_pruning}; corner_cutting: {ALLOW_CORNER_CUTTING}");
+                        println!("diagonal: {ALLOW_DIAGONAL}; improved_pruning: {improved_pruning}; corner_cutting: {ALLOW_CORNER_CUTTING}");
 
                         let mut problem_start: Point = start;
                         for (idx, &p) in jps_path.iter().enumerate().rev() {
@@ -142,4 +156,24 @@ fn fuzz_distance() {
             }
         }
     }
+}
+
+#[test]
+fn fuzz_reachable() {
+    reachable_fuzzer::<false>()
+}
+
+#[test]
+fn fuzz_reachable_diagonal() {
+    reachable_fuzzer::<true>()
+}
+
+#[test]
+fn fuzz_distance() {
+    distance_fuzzer::<false>()
+}
+
+#[test]
+fn fuzz_distance_diagonal() {
+    distance_fuzzer::<true>()
 }

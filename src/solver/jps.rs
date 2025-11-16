@@ -16,9 +16,9 @@ pub struct JPSSolver {
 impl GridSolver for JPSSolver {
     type Successors = SmallVec<[(Point, i32); N_SMALLVEC_SIZE]>;
 
-    fn successors<F>(
+    fn successors<const ALLOW_DIAGONAL: bool, F>(
         &self,
-        grid: &PathingGrid,
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
         parent: Option<&Point>,
         node: &Point,
         goal: &F,
@@ -61,12 +61,20 @@ impl GridSolver for JPSSolver {
     }
 
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
-    fn heuristic(&self, grid: &PathingGrid, p1: &Point, p2: &Point) -> i32 {
+    fn heuristic<const ALLOW_DIAGONAL: bool>(
+        &self,
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        p1: &Point,
+        p2: &Point,
+    ) -> i32 {
         self.cost(grid, p1, p2)
     }
 }
 impl JPSSolver {
-    pub fn new(grid: &PathingGrid, improved_pruning: bool) -> JPSSolver {
+    pub fn new<const ALLOW_DIAGONAL: bool>(
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        improved_pruning: bool,
+    ) -> JPSSolver {
         let mut solver = JPSSolver {
             jump_point: SimpleValueGrid::new(grid.width(), grid.height(), 0),
             neighbours: SimpleValueGrid::new(grid.width(), grid.height(), 0b11111111),
@@ -131,16 +139,16 @@ impl JPSSolver {
         forced_mask
     }
 
-    fn pruned_neighborhood<'a>(
+    fn pruned_neighborhood<'a, const ALLOW_DIAGONAL: bool>(
         &self,
         dir: Direction,
         node: &'a Point,
-        grid: &PathingGrid,
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
     ) -> impl Iterator<Item = (Point, i32)> + 'a {
         let dir_num = dir.num();
         let mut n_mask: u8;
         let mut neighbours = self.neighbours.get_point(*node);
-        if !grid.allow_diagonal_move {
+        if !ALLOW_DIAGONAL {
             neighbours &= 0b01010101;
             n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
         } else if dir.diagonal() {
@@ -168,7 +176,7 @@ impl JPSSolver {
         }
         let comb_mask = neighbours & n_mask;
         (0..8)
-            .step_by(if grid.allow_diagonal_move { 1 } else { 2 })
+            .step_by(if ALLOW_DIAGONAL { 1 } else { 2 })
             .filter(move |x| comb_mask & (1 << *x) != 0)
             // (dir_num % 2) * (D-C) + C)
             // is an optimized version without a conditional of
@@ -177,13 +185,13 @@ impl JPSSolver {
     }
 
     /// Straight jump in a cardinal direction.
-    fn jump_straight<F>(
+    fn jump_straight<const ALLOW_DIAGONAL: bool, F>(
         &self,
         mut initial: Point,
         mut cost: i32,
         direction: Direction,
         goal: &F,
-        grid: &PathingGrid,
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
     ) -> Option<(Point, i32)>
     where
         F: Fn(&Point) -> bool,
@@ -205,13 +213,13 @@ impl JPSSolver {
     }
 
     /// Performs the jumping of node neighbours, skipping over unnecessary nodes until a goal or a forced node is found.
-    fn jump<F>(
+    fn jump<const ALLOW_DIAGONAL: bool, F>(
         &self,
         mut initial: Point,
         mut cost: i32,
         direction: Direction,
         goal: &F,
-        grid: &PathingGrid,
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
     ) -> Option<(Point, i32)>
     where
         F: Fn(&Point) -> bool,
@@ -241,8 +249,8 @@ impl JPSSolver {
             // When using a 4-neighborhood (specified by setting allow_diagonal_move to false),
             // jumps perpendicular to the direction are performed. This is necessary to not miss the
             // goal when passing by.
-            if !grid.allow_diagonal_move || !ALLOW_CORNER_CUTTING && !direction.diagonal() {
-                if grid.allow_diagonal_move {
+            if !ALLOW_DIAGONAL || !ALLOW_CORNER_CUTTING && !direction.diagonal() {
+                if ALLOW_DIAGONAL {
                     let diag_1 = direction.rotate_ccw(1);
                     let diag_2 = direction.rotate_cw(1);
                     if self.jump(initial, 1, diag_1, goal, grid).is_some()
@@ -269,7 +277,11 @@ impl JPSSolver {
         let value = self.forced_mask(&point);
         self.jump_point.set_point(point, value);
     }
-    pub fn fix_jumppoints(&mut self, point: Point, grid: &PathingGrid) {
+    pub fn fix_jumppoints<const ALLOW_DIAGONAL: bool>(
+        &mut self,
+        point: Point,
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
+    ) {
         self.set_jumppoints(point);
         for p in grid.neighborhood_points(&point) {
             if grid.point_in_bounds(p) {
@@ -288,20 +300,29 @@ impl JPSSolver {
     }
 
     /// Updates the neighbours and jumppoints
-    fn set(&mut self, x: i32, y: i32, blocked: bool, grid: &PathingGrid) {
+    fn set<const ALLOW_DIAGONAL: bool>(
+        &mut self,
+        x: i32,
+        y: i32,
+        blocked: bool,
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
+    ) {
         let p = Point::new(x, y);
         self.update_neighbours(p.x, p.y, blocked);
         self.fix_jumppoints(p, grid);
     }
 
-    pub fn update_all_neighbours(&mut self, grid: &PathingGrid) {
+    pub fn update_all_neighbours<const ALLOW_DIAGONAL: bool>(
+        &mut self,
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
+    ) {
         for x in 0..self.width() as i32 {
             for y in 0..self.height() as i32 {
                 self.update_neighbours(x, y, grid.get(x, y));
             }
         }
     }
-    pub fn initialize(&mut self, grid: &PathingGrid) {
+    pub fn initialize<const ALLOW_DIAGONAL: bool>(&mut self, grid: &PathingGrid<ALLOW_DIAGONAL>) {
         // Emulates 'placing' of blocked tile around map border to correctly initialize neighbours
         // and make behaviour of a map bordered by tiles the same as a borderless map.
         for i in -1..=(self.width() as i32) {

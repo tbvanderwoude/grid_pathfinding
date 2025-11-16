@@ -19,11 +19,10 @@ fn verify_solution_distance_jps() {
     let bench_set = ["dao/arena", "dao/lak107d", "dao/den101d"];
     for name in bench_set {
         let (bool_grid, scenarios) = get_benchmark(name.to_owned());
-        let mut pathing_grid: PathingGrid =
+        let mut pathing_grid: PathingGrid<true> =
             PathingGrid::new(bool_grid.width, bool_grid.height, true);
 
         pathing_grid.grid = bool_grid.clone();
-        pathing_grid.allow_diagonal_move = true;
         pathing_grid.generate_components();
         let mut solver = JPSSolver::new(&pathing_grid, false);
         solver.initialize(&pathing_grid);
@@ -51,10 +50,9 @@ fn verify_solution_distance_astar() {
 
     for name in bench_set {
         let (bool_grid, scenarios) = get_benchmark(name.to_owned());
-        let mut pathing_grid: PathingGrid =
+        let mut pathing_grid: PathingGrid<true> =
             PathingGrid::new(bool_grid.width, bool_grid.height, true);
         pathing_grid.grid = bool_grid.clone();
-        pathing_grid.allow_diagonal_move = true;
         pathing_grid.generate_components();
         for (start, end, distance) in &scenarios {
             println!("Start: {start}; End: {end}; Distance: {distance}");

@@ -9,29 +9,28 @@ use smallvec::SmallVec;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug)]
-pub struct PathingGrid {
+pub struct PathingGrid<const D: bool> {
     pub grid: BoolGrid,
     pub components: UnionFind<usize>,
     pub components_dirty: bool,
-    pub allow_diagonal_move: bool,
     pub(crate) context: Arc<Mutex<DefaultSearchContext<Point, i32>>>,
 }
 
-impl Default for PathingGrid {
-    fn default() -> PathingGrid {
+impl<const D: bool> Default for PathingGrid<D> {
+    fn default() -> PathingGrid<D> {
         let grid = PathingGrid {
             grid: BoolGrid::default(),
             components: UnionFind::new(0),
             components_dirty: false,
-            allow_diagonal_move: true,
             context: Arc::new(Mutex::new(SearchContext::new())),
         };
         grid
     }
 }
-impl PathingGrid {
+
+impl<const ALLOW_DIAGONAL: bool> PathingGrid<ALLOW_DIAGONAL> {
     pub fn neighborhood_points(&self, point: &Point) -> SmallVec<[Point; 8]> {
-        if self.allow_diagonal_move {
+        if ALLOW_DIAGONAL {
             point.moore_neighborhood_smallvec()
         } else {
             point.neumann_neighborhood_smallvec()
@@ -48,6 +47,7 @@ impl PathingGrid {
             .map(move |p| (p, (pos.dir_obj(&p).num() % 2) * (D - C) + C))
             .collect::<SmallVec<[_; N_SMALLVEC_SIZE]>>()
     }
+
     pub fn can_move_to(&self, pos: Point, start: Point) -> bool {
         if ALLOW_CORNER_CUTTING {
             self.can_move_to_simple(pos)
@@ -131,7 +131,7 @@ impl PathingGrid {
                     let point = Point::new(x, y);
                     let parent_ix = self.grid.get_ix_point(&point);
 
-                    if self.allow_diagonal_move {
+                    if ALLOW_DIAGONAL {
                         vec![
                             Point::new(point.x, point.y + 1),
                             Point::new(point.x, point.y - 1),
@@ -160,7 +160,7 @@ impl PathingGrid {
         }
     }
 }
-impl fmt::Display for PathingGrid {
+impl<const D: bool> fmt::Display for PathingGrid<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Grid:")?;
         for y in 0..self.grid.height as i32 {
@@ -173,14 +173,13 @@ impl fmt::Display for PathingGrid {
     }
 }
 
-impl ValueGrid<bool> for PathingGrid {
+impl<const D: bool> ValueGrid<bool> for PathingGrid<D> {
     fn new(width: usize, height: usize, default_value: bool) -> Self {
         let base_grid = PathingGrid {
             grid: BoolGrid::new(width, height, default_value),
 
             components: UnionFind::new(width * height),
             components_dirty: false,
-            allow_diagonal_move: true,
             context: Arc::new(Mutex::new(SearchContext::new())),
         };
         base_grid
@@ -224,7 +223,7 @@ mod tests {
         // | # |
         // | # |
         //  ___
-        let mut path_graph = PathingGrid::new(3, 2, false);
+        let mut path_graph: PathingGrid<true> = PathingGrid::new(3, 2, false);
         path_graph.grid.set(1, 0, true);
         path_graph.grid.set(1, 1, true);
         let f_ix = |p| path_graph.get_ix_point(p);
@@ -244,7 +243,7 @@ mod tests {
 
     #[test]
     fn reachable_with_diagonals() {
-        let mut path_graph = PathingGrid::new(3, 2, false);
+        let mut path_graph: PathingGrid<true> = PathingGrid::new(3, 2, false);
         path_graph.grid.set(1, 0, true);
         path_graph.grid.set(1, 1, true);
         let p1 = Point::new(0, 0);
@@ -266,8 +265,7 @@ mod tests {
         // | # |
         // |  G|
         //  ___
-        let mut pathing_grid: PathingGrid = PathingGrid::new(3, 3, false);
-        pathing_grid.allow_diagonal_move = false;
+        let mut pathing_grid: PathingGrid<false> = PathingGrid::new(3, 3, false);
         pathing_grid.set(1, 1, true);
         pathing_grid.generate_components();
         let start = Point::new(0, 0);
@@ -281,14 +279,15 @@ mod tests {
         // | #|
         // |# |
         //  __
-        let mut pathing_grid: PathingGrid = PathingGrid::new(2, 2, true);
-        pathing_grid.allow_diagonal_move = false;
-        let mut pathing_grid_diag: PathingGrid = PathingGrid::new(2, 2, true);
-        for pathing_grid in [&mut pathing_grid, &mut pathing_grid_diag] {
-            pathing_grid.set(0, 0, false);
-            pathing_grid.set(1, 1, false);
-            pathing_grid.generate_components();
-        }
+        let mut pathing_grid: PathingGrid<false> = PathingGrid::new(2, 2, true);
+        let mut pathing_grid_diag: PathingGrid<true> = PathingGrid::new(2, 2, true);
+
+        pathing_grid.set(0, 0, false);
+        pathing_grid.set(1, 1, false);
+        pathing_grid.generate_components();
+        pathing_grid_diag.set(0, 0, false);
+        pathing_grid_diag.set(1, 1, false);
+        pathing_grid_diag.generate_components();
         let start = Point::new(0, 0);
         let end = Point::new(1, 1);
         assert!(pathing_grid.unreachable(&start, &end));
