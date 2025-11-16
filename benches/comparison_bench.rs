@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use grid_pathfinding::{
     pathing_grid::PathingGrid,
-    solver::{astar::AstarSolver, jps::JPSSolver, GridSolver},
+    solver::{astar::AstarSolver, dijkstra::DijkstraSolver, jps::JPSSolver, GridSolver},
     Pathfinder,
 };
 use grid_pathfinding_benchmark::*;
@@ -77,11 +77,7 @@ fn dao_bench_jps(c: &mut Criterion) {
 }
 fn dao_bench_astar(c: &mut Criterion) {
     for allow_diag in [false, true] {
-        let bench_set = if allow_diag {
-            ["dao/arena", "dao/den312d", "dao/arena2"]
-        } else {
-            ["dao/arena", "dao/den009d", "dao/den312d"]
-        };
+        let bench_set = ["dao/arena", "dao/den009d", "dao/den312d"];
         for name in bench_set {
             let (bool_grid, scenarios) = get_benchmark(name.to_owned());
             let mut pathing_grid: PathingGrid =
@@ -107,5 +103,33 @@ fn dao_bench_astar(c: &mut Criterion) {
         }
     }
 }
-criterion_group!(benches, dao_bench, dao_bench_jps, dao_bench_astar);
+fn dao_bench_dijkstra(c: &mut Criterion) {
+    for allow_diag in [false, true] {
+        let bench_set = ["dao/arena", "dao/den009d", "dao/den312d"];
+        for name in bench_set {
+            let (bool_grid, scenarios) = get_benchmark(name.to_owned());
+            let mut pathing_grid: PathingGrid =
+                PathingGrid::new(bool_grid.width, bool_grid.height, true);
+            pathing_grid.grid = bool_grid.clone();
+            pathing_grid.allow_diagonal_move = allow_diag;
+            pathing_grid.generate_components();
+            let solver = DijkstraSolver;
+            let diag_str = if allow_diag { "8-grid" } else { "4-grid" };
+
+            c.bench_function(format!("{name}, Dijkstra {diag_str}").as_str(), |b| {
+                b.iter(|| {
+                    for (start, end, _) in &scenarios {
+                        black_box(solver.get_path_single_goal(
+                            &mut pathing_grid,
+                            *start,
+                            *end,
+                            false,
+                        ));
+                    }
+                })
+            });
+        }
+    }
+}
+criterion_group!(benches, dao_bench, dao_bench_jps, dao_bench_dijkstra, dao_bench_astar);
 criterion_main!(benches);
