@@ -73,7 +73,7 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
 /// empty ([false]). It also records neighbours in [u8] format for fast lookups during search.
 /// Implements [Grid] by building on [BoolGrid].
 #[derive(Clone, Debug)]
-pub struct Pathfinder {
+pub struct Pathfinder<const ALLOW_DIAGONAL: bool> {
     pub grid: BoolGrid,
     pub neighbours: SimpleValueGrid<u8>,
     pub jump_point: SimpleValueGrid<u8>,
@@ -81,12 +81,11 @@ pub struct Pathfinder {
     pub components_dirty: bool,
     pub heuristic_factor: f32,
     pub improved_pruning: bool,
-    pub allow_diagonal_move: bool,
     context: Arc<Mutex<DefaultSearchContext<Point, i32>>>,
 }
 
-impl Default for Pathfinder {
-    fn default() -> Pathfinder {
+impl<const ALLOW_DIAGONAL: bool> Default for Pathfinder<ALLOW_DIAGONAL> {
+    fn default() -> Pathfinder<ALLOW_DIAGONAL> {
         let mut grid = Pathfinder {
             grid: BoolGrid::default(),
             neighbours: SimpleValueGrid::default(),
@@ -95,16 +94,15 @@ impl Default for Pathfinder {
             components_dirty: false,
             improved_pruning: true,
             heuristic_factor: 1.0,
-            allow_diagonal_move: true,
             context: Arc::new(Mutex::new(SearchContext::new())),
         };
         grid.initialize();
         grid
     }
 }
-impl Pathfinder {
+impl<const ALLOW_DIAGONAL: bool> Pathfinder<ALLOW_DIAGONAL> {
     fn neighborhood_points(&self, point: &Point) -> SmallVec<[Point; 8]> {
-        if self.allow_diagonal_move {
+        if ALLOW_DIAGONAL {
             point.moore_neighborhood_smallvec()
         } else {
             point.neumann_neighborhood_smallvec()
@@ -123,7 +121,7 @@ impl Pathfinder {
     }
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
     pub fn heuristic(&self, p1: &Point, p2: &Point) -> i32 {
-        if self.allow_diagonal_move {
+        if ALLOW_DIAGONAL {
             let delta_x = (p1.x - p2.x).abs();
             let delta_y = (p1.y - p2.y).abs();
             // Formula from https://github.com/riscy/a_star_on_grids
@@ -188,7 +186,7 @@ impl Pathfinder {
         let dir_num = dir.num();
         let mut n_mask: u8;
         let mut neighbours = self.neighbours.get_point(*node);
-        if !self.allow_diagonal_move {
+        if !ALLOW_DIAGONAL {
             neighbours &= 0b01010101;
             n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
         } else if dir.diagonal() {
@@ -216,7 +214,7 @@ impl Pathfinder {
         }
         let comb_mask = neighbours & n_mask;
         (0..8)
-            .step_by(if self.allow_diagonal_move { 1 } else { 2 })
+            .step_by(if ALLOW_DIAGONAL { 1 } else { 2 })
             .filter(move |x| comb_mask & (1 << *x) != 0)
             // (dir_num % 2) * (D-C) + C)
             // is an optimized version without a conditional of
@@ -287,7 +285,7 @@ impl Pathfinder {
             // When using a 4-neighborhood (specified by setting allow_diagonal_move to false),
             // jumps perpendicular to the direction are performed. This is necessary to not miss the
             // goal when passing by.
-            if !self.allow_diagonal_move || !ALLOW_CORNER_CUTTING && !direction.diagonal() {
+            if !ALLOW_DIAGONAL || !ALLOW_CORNER_CUTTING && !direction.diagonal() {
                 let perp_1 = direction.rotate_ccw(2);
                 let perp_2 = direction.rotate_cw(2);
                 if self.jump_straight(initial, 1, perp_1, goal).is_some()
@@ -590,7 +588,7 @@ impl Pathfinder {
                     let point = Point::new(x, y);
                     let parent_ix = self.grid.get_ix_point(&point);
 
-                    if self.allow_diagonal_move {
+                    if ALLOW_DIAGONAL {
                         vec![
                             Point::new(point.x, point.y + 1),
                             Point::new(point.x, point.y - 1),
@@ -619,7 +617,7 @@ impl Pathfinder {
         }
     }
 }
-impl fmt::Display for Pathfinder {
+impl<const ALLOW_DIAGONAL: bool> fmt::Display for Pathfinder<ALLOW_DIAGONAL> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Grid:")?;
         for y in 0..self.grid.height as i32 {
@@ -639,7 +637,7 @@ impl fmt::Display for Pathfinder {
     }
 }
 
-impl ValueGrid<bool> for Pathfinder {
+impl<const ALLOW_DIAGONAL: bool> ValueGrid<bool> for Pathfinder<ALLOW_DIAGONAL> {
     fn new(width: usize, height: usize, default_value: bool) -> Self {
         let mut base_grid = Pathfinder {
             grid: BoolGrid::new(width, height, default_value),
@@ -649,7 +647,6 @@ impl ValueGrid<bool> for Pathfinder {
             components_dirty: false,
             improved_pruning: true,
             heuristic_factor: 1.0,
-            allow_diagonal_move: true,
             context: Arc::new(Mutex::new(SearchContext::new())),
         };
         base_grid.initialize();

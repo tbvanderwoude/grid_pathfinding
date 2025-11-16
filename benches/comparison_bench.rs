@@ -6,25 +6,26 @@ use grid_pathfinding::{
 };
 use grid_pathfinding_benchmark::*;
 use grid_util::grid::ValueGrid;
+use smallvec::{smallvec, SmallVec};
 use std::hint::black_box;
 
-fn dao_bench(c: &mut Criterion) {
-    for (allow_diag, pruning) in [(true, false)] {
-        let bench_set = if allow_diag {
-            ["dao/arena", "dao/den312d", "dao/arena2"]
-        } else {
-            ["dao/arena", "dao/den009d", "dao/den312d"]
-        };
+fn dao_bench<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
+    let arr: SmallVec<[bool; 2]> = if ALLOW_DIAGONAL {
+        smallvec![false, true]
+    } else {
+        smallvec![false]
+    };
+    for pruning in arr {
+        let bench_set = ["dao/arena", "dao/den312d", "dao/arena2"];
         for name in bench_set {
             let (bool_grid, scenarios) = get_benchmark(name.to_owned());
-            let mut pathing_grid: Pathfinder =
+            let mut pathing_grid: Pathfinder<ALLOW_DIAGONAL> =
                 Pathfinder::new(bool_grid.width, bool_grid.height, true);
             pathing_grid.grid = bool_grid.clone();
-            pathing_grid.allow_diagonal_move = allow_diag;
             pathing_grid.improved_pruning = pruning;
             pathing_grid.initialize();
             pathing_grid.generate_components();
-            let diag_str = if allow_diag { "8-grid" } else { "4-grid" };
+            let diag_str = if ALLOW_DIAGONAL { "8-grid" } else { "4-grid" };
             let improved_str = if pruning { " (improved pruning)" } else { "" };
 
             c.bench_function(format!("{name}, {diag_str}{improved_str}").as_str(), |b| {
@@ -39,12 +40,8 @@ fn dao_bench(c: &mut Criterion) {
 }
 
 fn dao_bench_jps<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
-    for (pruning) in [false] {
-        let bench_set = if ALLOW_DIAGONAL {
-            ["dao/arena", "dao/den312d", "dao/arena2"]
-        } else {
-            ["dao/arena", "dao/den009d", "dao/den312d"]
-        };
+    for pruning in [false, true] {
+        let bench_set = ["dao/arena", "dao/den312d", "dao/arena2"];
         for name in bench_set {
             let (bool_grid, scenarios) = get_benchmark(name.to_owned());
             let mut pathing_grid: PathingGrid<ALLOW_DIAGONAL> =
@@ -75,11 +72,7 @@ fn dao_bench_jps<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     }
 }
 fn dao_bench_astar<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
-    let bench_set = if ALLOW_DIAGONAL {
-        ["dao/arena", "dao/den312d", "dao/arena2"]
-    } else {
-        ["dao/arena", "dao/den009d", "dao/den312d"]
-    };
+    let bench_set = ["dao/arena", "dao/den009d", "dao/den312d"];
     for name in bench_set {
         let (bool_grid, scenarios) = get_benchmark(name.to_owned());
         let mut pathing_grid: PathingGrid<ALLOW_DIAGONAL> =
@@ -121,7 +114,8 @@ fn dao_bench_dijkstra<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    dao_bench,
+    dao_bench<false>,
+    dao_bench<true>,
     dao_bench_jps<false>,
     dao_bench_jps<true>,
     dao_bench_astar<false>,

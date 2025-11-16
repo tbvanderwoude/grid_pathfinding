@@ -16,7 +16,7 @@ use grid_util::point::Point;
 // Nodes have an 8-neighborhood
 
 fn main() {
-    let mut pathing_grid: Pathfinder = Pathfinder::new(3, 3, false);
+    let mut pathing_grid: Pathfinder<true> = Pathfinder::new(3, 3, false);
     pathing_grid.set(1, 1, true);
     pathing_grid.generate_components();
     println!("{}", pathing_grid);
