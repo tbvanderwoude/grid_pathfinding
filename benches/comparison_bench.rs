@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use grid_pathfinding::{
     pathing_grid::PathingGrid,
-    solver::{astar::AstarSolver, jps::JPSSolver, GridSolver},
+    solver::{astar::AstarSolver, dijkstra::DijkstraSolver, jps::JPSSolver, GridSolver},
     Pathfinder,
 };
 use grid_pathfinding_benchmark::*;
@@ -98,12 +98,35 @@ fn dao_bench_astar<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
         });
     }
 }
+fn dao_bench_dijkstra<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
+    let bench_set = ["dao/arena", "dao/den009d", "dao/den312d"];
+    for name in bench_set {
+        let (bool_grid, scenarios) = get_benchmark(name.to_owned());
+        let mut pathing_grid: PathingGrid<ALLOW_DIAGONAL> =
+            PathingGrid::new(bool_grid.width, bool_grid.height, true);
+        pathing_grid.grid = bool_grid.clone();
+        pathing_grid.generate_components();
+        let solver = DijkstraSolver;
+        let diag_str = if ALLOW_DIAGONAL { "8-grid" } else { "4-grid" };
+
+        c.bench_function(format!("{name}, Dijkstra {diag_str}").as_str(), |b| {
+            b.iter(|| {
+                for (start, end, _) in &scenarios {
+                    black_box(solver.get_path_single_goal(&mut pathing_grid, *start, *end, false));
+                }
+            })
+        });
+    }
+}
+
 criterion_group!(
     benches,
     dao_bench,
     dao_bench_jps<false>,
     dao_bench_jps<true>,
     dao_bench_astar<false>,
-    dao_bench_astar<true>
+    dao_bench_astar<true>,
+    dao_bench_dijkstra<false>,
+    dao_bench_dijkstra<true>
 );
 criterion_main!(benches);
