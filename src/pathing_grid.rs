@@ -1,6 +1,8 @@
+use crate::astar_jps::DefaultSearchContext;
+
 use super::*;
 use core::fmt;
-use grid_util::grid::{BoolGrid, SimpleValueGrid, ValueGrid};
+use grid_util::grid::{BoolGrid, ValueGrid};
 use grid_util::point::Point;
 use petgraph::unionfind::UnionFind;
 use smallvec::SmallVec;
@@ -12,7 +14,7 @@ pub struct PathingGrid {
     pub components: UnionFind<usize>,
     pub components_dirty: bool,
     pub allow_diagonal_move: bool,
-    pub(crate) context: Arc<Mutex<SearchContext<Point, i32>>>,
+    pub(crate) context: Arc<Mutex<DefaultSearchContext<Point, i32>>>,
 }
 
 impl Default for PathingGrid {

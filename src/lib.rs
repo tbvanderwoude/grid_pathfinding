@@ -20,8 +20,10 @@ use smallvec::SmallVec;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
+use crate::astar_jps::DefaultSearchContext;
+
+pub const ALLOW_CORNER_CUTTING: bool = true;
 const EQUAL_EDGE_COST: bool = false;
-const ALLOW_CORNER_CUTTING: bool = false;
 const GRAPH_PRUNING: bool = true;
 const N_SMALLVEC_SIZE: usize = 8;
 
@@ -79,7 +81,7 @@ pub struct Pathfinder {
     pub heuristic_factor: f32,
     pub improved_pruning: bool,
     pub allow_diagonal_move: bool,
-    context: Arc<Mutex<SearchContext<Point, i32>>>,
+    context: Arc<Mutex<DefaultSearchContext<Point, i32>>>,
 }
 
 impl Default for Pathfinder {

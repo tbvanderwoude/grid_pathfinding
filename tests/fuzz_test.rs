@@ -124,7 +124,9 @@ fn fuzz_distance() {
 
                             // First point where JPS suffix is no longer optimal
                             if rel_diff >= tolerance {
-                                println!("=> First suboptimal JPS step at index {idx}, point {p:?}");
+                                println!(
+                                    "=> First suboptimal JPS step at index {idx}, point {p:?}"
+                                );
                                 println!("- JPS suffix from here: {jps_suffix:?}");
                                 println!("- A* optimal suffix:    {astar_suffix_path:?}");
                                 problem_start = p;
