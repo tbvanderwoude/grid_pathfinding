@@ -6,6 +6,7 @@ use fxhash::FxBuildHasher;
 use indexmap::map::Entry::{Occupied, Vacant};
 use indexmap::IndexMap;
 use num_traits::Zero;
+use priority_queue::PriorityQueue;
 
 type FxIndexMap<K, V> = IndexMap<K, V, FxBuildHasher>;
 
@@ -94,6 +95,23 @@ where
     }
 }
 
+impl<C> Frontier<C> for PriorityQueue<C, SearchNode<C>>
+where
+    C: Zero + Ord + Copy + Hash,
+{
+    fn clear(&mut self) {
+        self.clear();
+    }
+
+    fn pop(&mut self) -> Option<SearchNode<C>> {
+        self.pop().map(|x| x.1)
+    }
+
+    fn push(&mut self, item: SearchNode<C>) {
+        self.push(item.estimated_cost, item);
+    }
+}
+
 /// [AstarContext] represents the search fringe and node parent map, facilitating reuse of memory allocations.
 #[derive(Clone, Debug)]
 pub struct SearchContext<N, C, F> {
@@ -101,7 +119,9 @@ pub struct SearchContext<N, C, F> {
     parents: FxIndexMap<N, (usize, C)>,
 }
 
-pub type DefaultSearchContext<N, C> = SearchContext<N, C, BinaryHeap<SearchNode<C>>>;
+pub type BinaryHeapSearchContext<N, C> = SearchContext<N, C, BinaryHeap<SearchNode<C>>>;
+pub type PQSearchContext<N, C> = SearchContext<N, C, PriorityQueue<C, SearchNode<C>>>;
+pub type DefaultSearchContext<N, C> = PQSearchContext<N, C>;
 
 impl<N, C, F> SearchContext<N, C, F>
 where
@@ -197,7 +217,7 @@ pub fn astar_jps<N, C, FN, IN, FH, FS>(
 ) -> Option<(Vec<N>, C)>
 where
     N: Eq + Hash + Clone,
-    C: Zero + Ord + Copy,
+    C: Zero + Ord + Copy + Hash,
     FN: FnMut(&Option<&N>, &N) -> IN,
     IN: IntoIterator<Item = (N, C)>,
     FH: FnMut(&N) -> C,
