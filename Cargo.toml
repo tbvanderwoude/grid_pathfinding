@@ -19,7 +19,6 @@ num-traits = "0.2"
 grid_util = { version = "0.2", features = ["smallvec"]}
 log = "0.4"
 smallvec = "1.13.2"
-priority-queue = "2.7.0"
 
 [lib]
 bench = false
