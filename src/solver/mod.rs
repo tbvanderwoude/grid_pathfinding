@@ -1,6 +1,7 @@
 use crate::{pathing_grid::PathingGrid, waypoints_to_path, C, D, E, EQUAL_EDGE_COST};
 use grid_util::Point;
 
+pub mod alt;
 pub mod astar;
 pub mod dijkstra;
 pub mod jps;
