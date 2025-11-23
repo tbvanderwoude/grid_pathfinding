@@ -97,8 +97,8 @@ where
 /// [AstarContext] represents the search fringe and node parent map, facilitating reuse of memory allocations.
 #[derive(Clone, Debug)]
 pub struct SearchContext<N, C, F> {
-    fringe: F,
-    parents: FxIndexMap<N, (usize, C)>,
+    pub(crate) fringe: F,
+    pub(crate) parents: FxIndexMap<N, (usize, C)>,
 }
 
 pub type BinaryHeapSearchContext<N, C> = SearchContext<N, C, BinaryHeap<SearchNode<C>>>;
