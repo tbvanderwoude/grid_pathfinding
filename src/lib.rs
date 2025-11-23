@@ -516,14 +516,14 @@ impl<const ALLOW_DIAGONAL: bool> Pathfinder<ALLOW_DIAGONAL> {
             |parent, node| {
                 if GRAPH_PRUNING {
                     self.jps_neighbours(*parent, node, &|node_pos| {
-                        self.heuristic(node_pos, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 }
+                        self.heuristic(node_pos, &goal) <= D
                     })
                 } else {
                     self.neighborhood_points_and_cost(node)
                 }
             },
             |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
-            |point| self.heuristic(point, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 },
+            |point| self.heuristic(point, &goal) <= D,
         )
         .map(|(v, _c)| v)
     }

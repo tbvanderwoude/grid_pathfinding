@@ -1,4 +1,4 @@
-use crate::{pathing_grid::PathingGrid, waypoints_to_path, C, D, E, EQUAL_EDGE_COST};
+use crate::{pathing_grid::PathingGrid, waypoints_to_path, C, D, E};
 use grid_util::Point;
 
 pub mod alt;
@@ -131,11 +131,11 @@ pub trait GridSolver {
             &start,
             |parent, node| {
                 self.successors(grid, *parent, node, &|node_pos| {
-                    self.heuristic(grid, node_pos, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 }
+                    self.heuristic(grid, node_pos, &goal) <= D
                 })
             },
             |point| self.heuristic(grid, point, &goal),
-            |point| self.heuristic(grid, point, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 },
+            |point| self.heuristic(grid, point, &goal) <= D,
         )
         .map(|(v, _c)| v)
     }
