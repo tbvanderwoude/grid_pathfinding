@@ -120,15 +120,15 @@ where
     pub fn astar_jps<FN, IN, FH, FS>(
         &mut self,
         start: &N,
-        mut successors: FN,
-        mut heuristic: FH,
-        mut success: FS,
+        successors: FN,
+        heuristic: FH,
+        success: FS,
     ) -> Option<(Vec<N>, C)>
     where
-        FN: FnMut(&Option<&N>, &N) -> IN,
+        FN: Fn(&Option<&N>, &N) -> IN,
         IN: IntoIterator<Item = (N, C)>,
-        FH: FnMut(&N) -> C,
-        FS: FnMut(&N) -> bool,
+        FH: Fn(&N) -> C,
+        FS: Fn(&N) -> bool,
     {
         self.fringe.clear();
         self.parents.clear();
@@ -199,10 +199,10 @@ pub fn astar_jps<N, C, FN, IN, FH, FS>(
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy + Hash,
-    FN: FnMut(&Option<&N>, &N) -> IN,
+    FN: Fn(&Option<&N>, &N) -> IN,
     IN: IntoIterator<Item = (N, C)>,
-    FH: FnMut(&N) -> C,
-    FS: FnMut(&N) -> bool,
+    FH: Fn(&N) -> C,
+    FS: Fn(&N) -> bool,
 {
     let mut search = DefaultSearchContext::new();
     search.astar_jps(start, successors, heuristic, success)
