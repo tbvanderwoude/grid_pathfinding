@@ -24,12 +24,7 @@ fn dao_bench_single<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
             c.bench_function(format!("{name}, {diag_str}{improved_str}").as_str(), |b| {
                 b.iter(|| {
                     for (start, end, _) in &scenarios {
-                        black_box(solver.get_path_single_goal(
-                            &mut pathing_grid,
-                            *start,
-                            *end,
-                            false,
-                        ));
+                        black_box(solver.get_path_single_goal(&mut pathing_grid, *start, *end));
                     }
                 })
             });

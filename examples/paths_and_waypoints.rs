@@ -26,7 +26,7 @@ fn main() {
     println!("{}", pathing_grid);
     let start = Point::new(0, 0);
     let end = Point::new(4, 4);
-    if let Some(path) = pathing_grid.get_waypoints_single_goal(start, end, false) {
+    if let Some(path) = pathing_grid.get_waypoints_single_goal(start, end) {
         println!("Waypoints:");
         for p in &path {
             println!("{:?}", p);
@@ -37,9 +37,7 @@ fn main() {
         }
     }
     println!("\nDirectly computed path");
-    let expanded_path = pathing_grid
-        .get_path_single_goal(start, end, false)
-        .unwrap();
+    let expanded_path = pathing_grid.get_path_single_goal(start, end).unwrap();
     for p in expanded_path {
         println!("{:?}", p);
     }

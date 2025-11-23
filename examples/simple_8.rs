@@ -22,9 +22,7 @@ fn main() {
     println!("{}", pathing_grid);
     let start = Point::new(0, 0);
     let end = Point::new(2, 2);
-    let path = pathing_grid
-        .get_path_single_goal(start, end, false)
-        .unwrap();
+    let path = pathing_grid.get_path_single_goal(start, end).unwrap();
     println!("Path:");
     for p in path {
         println!("{:?}", p);

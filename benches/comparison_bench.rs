@@ -35,7 +35,7 @@ fn dao_bench<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
             c.bench_function(format!("{name}, {diag_str}{improved_str}").as_str(), |b| {
                 b.iter(|| {
                     for (start, end, _) in &scenarios {
-                        black_box(pathing_grid.get_path_single_goal(*start, *end, false));
+                        black_box(pathing_grid.get_path_single_goal(*start, *end));
                     }
                 })
             });
@@ -71,12 +71,7 @@ fn dao_bench_jps<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
                 |b| {
                     b.iter(|| {
                         for (start, end, _) in &scenarios {
-                            black_box(solver.get_path_single_goal(
-                                &mut pathing_grid,
-                                *start,
-                                *end,
-                                false,
-                            ));
+                            black_box(solver.get_path_single_goal(&mut pathing_grid, *start, *end));
                         }
                     })
                 },
@@ -95,10 +90,10 @@ fn dao_bench_astar<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
         let solver = AstarSolver::new();
         let diag_str = if ALLOW_DIAGONAL { "8-grid" } else { "4-grid" };
 
-        c.bench_function(format!("{name}, A* {diag_str}").as_str(), |b| {
+        c.bench_function(format!("{name}, Astar {diag_str}").as_str(), |b| {
             b.iter(|| {
                 for (start, end, _) in &scenarios {
-                    black_box(solver.get_path_single_goal(&mut pathing_grid, *start, *end, false));
+                    black_box(solver.get_path_single_goal(&mut pathing_grid, *start, *end));
                 }
             })
         });
@@ -118,7 +113,7 @@ fn dao_bench_dijkstra<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
         c.bench_function(format!("{name}, Dijkstra {diag_str}").as_str(), |b| {
             b.iter(|| {
                 for (start, end, _) in &scenarios {
-                    black_box(solver.get_path_single_goal(&mut pathing_grid, *start, *end, false));
+                    black_box(solver.get_path_single_goal(&mut pathing_grid, *start, *end));
                 }
             })
         });
@@ -128,7 +123,7 @@ fn dao_bench_dijkstra<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
 criterion_group!(
     benches,
     // dao_bench<false>,
-    // dao_bench<true>,
+    dao_bench<true>,
     // dao_bench_jps<false>,
     dao_bench_jps<true>,
     // dao_bench_astar<false>,

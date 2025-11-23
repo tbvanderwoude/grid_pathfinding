@@ -70,7 +70,7 @@ fn reachable_fuzzer<const ALLOW_DIAGONAL: bool>() {
             random_grid.set_point(end, false);
             solver.initialize(&random_grid);
             let reachable = random_grid.reachable(&start, &end);
-            let path = solver.get_path_single_goal(&mut random_grid, start, end, false);
+            let path = solver.get_path_single_goal(&mut random_grid, start, end);
             // Show the grid if a path is not found
             if path.is_some() != reachable {
                 visualize_grid(&random_grid, &start, &end);
@@ -108,10 +108,10 @@ fn distance_fuzzer<const ALLOW_DIAGONAL: bool>() {
             let reachable = random_grid.reachable(&start, &end);
             if reachable {
                 let jps_path = jps_solver
-                    .get_path_single_goal(&mut random_grid, start, end, false)
+                    .get_path_single_goal(&mut random_grid, start, end)
                     .unwrap();
                 let astar_path = astar_solver
-                    .get_path_single_goal(&mut random_grid, start, end, false)
+                    .get_path_single_goal(&mut random_grid, start, end)
                     .unwrap();
 
                 let astar_cost = astar_solver.get_path_cost_float(&astar_path, &random_grid);
@@ -128,7 +128,7 @@ fn distance_fuzzer<const ALLOW_DIAGONAL: bool>() {
                             let jps_suffix_cost =
                                 jps_solver.get_path_cost_float(jps_suffix, &random_grid);
                             let astar_suffix_path = astar_solver
-                                .get_path_single_goal(&mut random_grid, p, end, false)
+                                .get_path_single_goal(&mut random_grid, p, end)
                                 .expect("A* should find a path from intermediate JPS node");
                             let astar_suffix_cost =
                                 astar_solver.get_path_cost_float(&astar_suffix_path, &random_grid);

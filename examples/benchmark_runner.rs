@@ -37,7 +37,7 @@ pub fn run_scenarios<const ALLOW_DIAGONAL: bool>(
     scenarios: &Vec<(Point, Point, f64)>,
 ) {
     for (start, goal, _) in scenarios {
-        let path: Option<Vec<Point>> = pathing_grid.get_waypoints_single_goal(*start, *goal, false);
+        let path: Option<Vec<Point>> = pathing_grid.get_waypoints_single_goal(*start, *goal);
         assert!(path.is_some());
     }
 }

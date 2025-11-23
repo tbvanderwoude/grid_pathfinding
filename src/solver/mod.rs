@@ -77,9 +77,17 @@ pub trait GridSolver {
         grid: &mut PathingGrid<ALLOW_DIAGONAL>,
         start: Point,
         goal: Point,
-        approximate: bool,
     ) -> Option<Vec<Point>> {
-        self.get_waypoints_single_goal(grid, start, goal, approximate)
+        self.get_waypoints_single_goal(grid, start, goal)
+            .map(waypoints_to_path)
+    }
+    fn get_path_single_goal_approximate<const ALLOW_DIAGONAL: bool>(
+        &self,
+        grid: &mut PathingGrid<ALLOW_DIAGONAL>,
+        start: Point,
+        goal: Point,
+    ) -> Option<Vec<Point>> {
+        self.get_waypoints_single_goal_approximate(grid, start, goal)
             .map(waypoints_to_path)
     }
     /// The raw waypoints (jump points) from which [get_path_single_goal](Self::get_path_single_goal) makes a path.
@@ -88,41 +96,46 @@ pub trait GridSolver {
         grid: &mut PathingGrid<ALLOW_DIAGONAL>,
         start: Point,
         goal: Point,
-        approximate: bool,
     ) -> Option<Vec<Point>> {
-        if approximate {
-            // Check if start and one of the goal neighbours are on the same connected component.
-            if grid.neighbours_unreachable(&start, &goal) {
-                // No neigbhours of the goal are reachable from the start
-                return None;
-            }
-            // A neighbour of the goal can be reached, compute a path
-            let mut ct = grid.context.lock().unwrap();
-            ct.astar_jps(
-                &start,
-                |parent, node| {
-                    self.successors(grid, *parent, node, &|node_pos| {
-                        self.heuristic(grid, node_pos, &goal)
-                            <= if EQUAL_EDGE_COST { 1 } else { 99 }
-                    })
-                },
-                |point| self.heuristic(grid, point, &goal),
-                |point| self.heuristic(grid, point, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 },
-            )
-        } else {
-            // Check if start and goal are on the same connected component.
-            if grid.unreachable(&start, &goal) {
-                return None;
-            }
-            // The goal is reachable from the start, compute a path
-            let mut ct = grid.context.lock().unwrap();
-            ct.astar_jps(
-                &start,
-                |parent, node| self.successors(grid, *parent, node, &|node_pos| *node_pos == goal),
-                |point| self.heuristic(grid, point, &goal),
-                |point| *point == goal,
-            )
+        // Check if start and goal are on the same connected component.
+        if grid.unreachable(&start, &goal) {
+            return None;
         }
+        // The goal is reachable from the start, compute a path
+        let mut ct = grid.context.lock().unwrap();
+        ct.astar_jps(
+            &start,
+            |parent, node| self.successors(grid, *parent, node, &|node_pos| *node_pos == goal),
+            |point| self.heuristic(grid, point, &goal),
+            |point| *point == goal,
+        )
+        .map(|(v, _c)| v)
+    }
+
+    /// The raw waypoints (jump points) from which [get_path_single_goal](Self::get_path_single_goal) makes a path.
+    fn get_waypoints_single_goal_approximate<const ALLOW_DIAGONAL: bool>(
+        &self,
+        grid: &mut PathingGrid<ALLOW_DIAGONAL>,
+        start: Point,
+        goal: Point,
+    ) -> Option<Vec<Point>> {
+        // Check if start and one of the goal neighbours are on the same connected component.
+        if grid.neighbours_unreachable(&start, &goal) {
+            // No neigbhours of the goal are reachable from the start
+            return None;
+        }
+        // A neighbour of the goal can be reached, compute a path
+        let mut ct = grid.context.lock().unwrap();
+        ct.astar_jps(
+            &start,
+            |parent, node| {
+                self.successors(grid, *parent, node, &|node_pos| {
+                    self.heuristic(grid, node_pos, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 }
+                })
+            },
+            |point| self.heuristic(grid, point, &goal),
+            |point| self.heuristic(grid, point, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 },
+        )
         .map(|(v, _c)| v)
     }
     /// Computes a path from the start to one of the given goals and returns the selected goal in addition to the found path. Otherwise behaves similar to [get_path_single_goal](Self::get_path_single_goal).

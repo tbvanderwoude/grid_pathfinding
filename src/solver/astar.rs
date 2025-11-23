@@ -59,7 +59,7 @@ mod tests {
         let solver = AstarSolver::new();
         let start = Point::new(0, 0);
         let path = solver
-            .get_path_single_goal(&mut pathing_grid, start, start, false)
+            .get_path_single_goal(&mut pathing_grid, start, start)
             .unwrap();
         assert!(path.len() == 1);
     }
@@ -72,7 +72,7 @@ mod tests {
         let solver = AstarSolver::new();
         let start = Point::new(0, 0);
         let path = solver
-            .get_path_single_goal(&mut pathing_grid, start, start, false)
+            .get_path_single_goal(&mut pathing_grid, start, start)
             .unwrap();
         assert!(path.len() == 1);
     }
@@ -89,7 +89,7 @@ mod tests {
         let start = Point::new(0, 0);
         let end = Point::new(2, 2);
         let path = solver
-            .get_path_single_goal(&mut pathing_grid, start, end, false)
+            .get_path_single_goal(&mut pathing_grid, start, end)
             .unwrap();
         assert!(path.len() == expected);
     }
@@ -106,7 +106,7 @@ mod tests {
         let start = Point::new(0, 0);
         let end = Point::new(2, 2);
         let path = solver
-            .get_path_single_goal(&mut pathing_grid, start, end, false)
+            .get_path_single_goal(&mut pathing_grid, start, end)
             .unwrap();
         assert!(path.len() == expected);
     }
@@ -160,7 +160,7 @@ mod tests {
         let start = Point::new(0, 0);
         let end = Point::new(7, 7);
         let path = solver
-            .get_path_single_goal(&mut pathing_grid, start, end, false)
+            .get_path_single_goal(&mut pathing_grid, start, end)
             .unwrap();
         assert!(path.len() == expected);
     }
@@ -178,7 +178,7 @@ mod tests {
         let start = Point::new(0, 0);
         let end = Point::new(7, 7);
         let path = solver
-            .get_path_single_goal(&mut pathing_grid, start, end, false)
+            .get_path_single_goal(&mut pathing_grid, start, end)
             .unwrap();
         assert!(path.len() == expected);
     }
@@ -201,8 +201,8 @@ mod tests {
 
         let start = Point::new(0, 0);
         let goal = Point::new(1, 1);
-        let path = solver.get_path_single_goal(&mut pathing_grid, start, goal, false);
-        let path_diag = solver.get_path_single_goal(&mut pathing_grid_diag, start, goal, false);
+        let path = solver.get_path_single_goal(&mut pathing_grid, start, goal);
+        let path_diag = solver.get_path_single_goal(&mut pathing_grid_diag, start, goal);
         assert!(path.is_none());
         if ALLOW_CORNER_CUTTING {
             assert!(path_diag.is_some());

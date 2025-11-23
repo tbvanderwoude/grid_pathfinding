@@ -30,7 +30,7 @@ fn verify_solution_distance_jps() {
         for (start, end, distance) in &scenarios {
             println!("Start: {start}; End: {end}; Distance: {distance}");
             let path = solver
-                .get_path_single_goal(&mut pathing_grid, *start, *end, false)
+                .get_path_single_goal(&mut pathing_grid, *start, *end)
                 .unwrap();
             save_path(path.clone(), "path.csv").unwrap();
             let float_cost = solver.get_path_cost_float(&path, &pathing_grid);
@@ -57,7 +57,7 @@ fn verify_solution_distance_astar() {
         for (start, end, distance) in &scenarios {
             println!("Start: {start}; End: {end}; Distance: {distance}");
             let path = solver
-                .get_path_single_goal(&mut pathing_grid, *start, *end, false)
+                .get_path_single_goal(&mut pathing_grid, *start, *end)
                 .unwrap();
             save_path(path.clone(), "path.csv").unwrap();
             let float_cost = solver.get_path_cost_float(&path, &pathing_grid);

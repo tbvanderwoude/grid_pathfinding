@@ -23,7 +23,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::astar_jps::DefaultSearchContext;
 
-pub const ALLOW_CORNER_CUTTING: bool = true;
+pub const ALLOW_CORNER_CUTTING: bool = false;
 const EQUAL_EDGE_COST: bool = false;
 const GRAPH_PRUNING: bool = true;
 const N_SMALLVEC_SIZE: usize = 8;
@@ -423,13 +423,16 @@ impl<const ALLOW_DIAGONAL: bool> Pathfinder<ALLOW_DIAGONAL> {
     /// called Weighted A*. In pathfinding language, a factor greater than
     /// 1.0 will make the heuristic [inadmissible](https://en.wikipedia.org/wiki/Admissible_heuristic), a requirement for solution optimality. By default,
     /// the [heuristic_factor](Self::heuristic_factor) is 1.0 which gives optimal solutions.
-    pub fn get_path_single_goal(
+    pub fn get_path_single_goal(&self, start: Point, goal: Point) -> Option<Vec<Point>> {
+        self.get_waypoints_single_goal(start, goal)
+            .map(waypoints_to_path)
+    }
+    pub fn get_path_single_goal_approximate(
         &self,
         start: Point,
         goal: Point,
-        approximate: bool,
     ) -> Option<Vec<Point>> {
-        self.get_waypoints_single_goal(start, goal, approximate)
+        self.get_waypoints_single_goal_approximate(start, goal)
             .map(waypoints_to_path)
     }
 
@@ -474,54 +477,54 @@ impl<const ALLOW_DIAGONAL: bool> Pathfinder<ALLOW_DIAGONAL> {
         result.map(|(v, _c)| (*v.last().unwrap(), v))
     }
     /// The raw waypoints (jump points) from which [get_path_single_goal](Self::get_path_single_goal) makes a path.
-    pub fn get_waypoints_single_goal(
+    pub fn get_waypoints_single_goal(&self, start: Point, goal: Point) -> Option<Vec<Point>> {
+        // Check if start and goal are on the same connected component.
+        if self.unreachable(&start, &goal) {
+            return None;
+        }
+        // The goal is reachable from the start, compute a path
+        let mut ct = self.context.lock().unwrap();
+        ct.astar_jps(
+            &start,
+            |parent, node| {
+                if GRAPH_PRUNING {
+                    self.jps_neighbours(*parent, node, &|node_pos| *node_pos == goal)
+                } else {
+                    self.neighborhood_points_and_cost(node)
+                }
+            },
+            |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
+            |point| *point == goal,
+        )
+        .map(|(v, _c)| v)
+    }
+    /// The raw waypoints (jump points) from which [get_path_single_goal](Self::get_path_single_goal) makes a path.
+    pub fn get_waypoints_single_goal_approximate(
         &self,
         start: Point,
         goal: Point,
-        approximate: bool,
     ) -> Option<Vec<Point>> {
-        if approximate {
-            // Check if start and one of the goal neighbours are on the same connected component.
-            if self.neighbours_unreachable(&start, &goal) {
-                // No neigbhours of the goal are reachable from the start
-                return None;
-            }
-            // A neighbour of the goal can be reached, compute a path
-            let mut ct = self.context.lock().unwrap();
-            ct.astar_jps(
-                &start,
-                |parent, node| {
-                    if GRAPH_PRUNING {
-                        self.jps_neighbours(*parent, node, &|node_pos| {
-                            self.heuristic(node_pos, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 }
-                        })
-                    } else {
-                        self.neighborhood_points_and_cost(node)
-                    }
-                },
-                |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
-                |point| self.heuristic(point, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 },
-            )
-        } else {
-            // Check if start and goal are on the same connected component.
-            if self.unreachable(&start, &goal) {
-                return None;
-            }
-            // The goal is reachable from the start, compute a path
-            let mut ct = self.context.lock().unwrap();
-            ct.astar_jps(
-                &start,
-                |parent, node| {
-                    if GRAPH_PRUNING {
-                        self.jps_neighbours(*parent, node, &|node_pos| *node_pos == goal)
-                    } else {
-                        self.neighborhood_points_and_cost(node)
-                    }
-                },
-                |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
-                |point| *point == goal,
-            )
+        // Check if start and one of the goal neighbours are on the same connected component.
+        if self.neighbours_unreachable(&start, &goal) {
+            // No neigbhours of the goal are reachable from the start
+            return None;
         }
+        // A neighbour of the goal can be reached, compute a path
+        let mut ct = self.context.lock().unwrap();
+        ct.astar_jps(
+            &start,
+            |parent, node| {
+                if GRAPH_PRUNING {
+                    self.jps_neighbours(*parent, node, &|node_pos| {
+                        self.heuristic(node_pos, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 }
+                    })
+                } else {
+                    self.neighborhood_points_and_cost(node)
+                }
+            },
+            |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
+            |point| self.heuristic(point, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 },
+        )
         .map(|(v, _c)| v)
     }
     /// Regenerates the components if they are marked as dirty.
