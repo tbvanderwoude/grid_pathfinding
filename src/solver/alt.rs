@@ -67,7 +67,6 @@ impl GridSolver for ALTSolver {
         grid.neighborhood_points_and_cost(node)
     }
 
-    /// Just the normal cost times a heuristic factor.
     fn heuristic<const ALLOW_DIAGONAL: bool>(
         &self,
         _: &PathingGrid<ALLOW_DIAGONAL>,
