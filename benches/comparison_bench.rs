@@ -14,7 +14,7 @@ use std::hint::black_box;
 
 fn dao_bench<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     let arr: SmallVec<[bool; 2]> = if ALLOW_DIAGONAL {
-        smallvec![false, true]
+        smallvec![false]
     } else {
         smallvec![false]
     };
@@ -97,7 +97,7 @@ pub fn generate_landmarks_mc<const ALLOW_DIAGONAL: bool>(
 
 fn dao_bench_jps<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     let arr: SmallVec<[bool; 2]> = if ALLOW_DIAGONAL {
-        smallvec![false, true]
+        smallvec![false]
     } else {
         smallvec![false]
     };
@@ -115,17 +115,26 @@ fn dao_bench_jps<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     }
 }
 
-fn dao_bench_alt<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
+fn dao_bench_alt_mc<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     dao_bench_solver(
         c,
         "ALT (MC)",
         |pathing_grid: &mut PathingGrid<ALLOW_DIAGONAL>| {
             let landmarks = generate_landmarks_mc(&pathing_grid, 64);
-            ALTSolver::new(landmarks, pathing_grid)
+            ALTSolver::new_from_landmarks(landmarks, pathing_grid)
         },
     );
 }
-
+fn dao_bench_alt_greedy<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
+    dao_bench_solver(
+        c,
+        "ALT (greedy)",
+        |pathing_grid: &mut PathingGrid<ALLOW_DIAGONAL>| {
+            let landmarks = generate_landmarks_mc(&pathing_grid, 1);
+            ALTSolver::new_greedy(landmarks[0], 64, pathing_grid)
+        },
+    );
+}
 fn dao_bench_astar<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     dao_bench_solver(c, "Astar", |_: &mut PathingGrid<ALLOW_DIAGONAL>| {
         AstarSolver::new()
@@ -141,11 +150,12 @@ fn dao_bench_dijkstra<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
 criterion_group!(
     benches,
     // dao_bench<false>,
-    // dao_bench<true>,
+    dao_bench<true>,
     // dao_bench_jps<false>,
-    dao_bench_jps<false>,
-    dao_bench_alt<false>,
-    dao_bench_astar<false>,
+    dao_bench_jps<true>,
+    dao_bench_alt_greedy<true>,
+    dao_bench_alt_mc<true>,
+    // dao_bench_astar<false>,
     // dao_bench_astar<true>,
     // dao_bench_dijkstra<false>,
     // dao_bench_dijkstra<true>

@@ -2,7 +2,7 @@ use std::i32;
 
 use crate::solver::dijkstra::DijkstraSolver;
 use crate::{pathing_grid::PathingGrid, solver::GridSolver, N_SMALLVEC_SIZE};
-use grid_util::{Grid, Point, SimpleGrid, SimpleValueGrid, ValueGrid};
+use grid_util::{Grid, Point, SimpleGrid, ValueGrid};
 use smallvec::SmallVec;
 use std::iter::zip;
 
@@ -12,37 +12,68 @@ pub struct ALTSolver {
     landmark_distances: SimpleGrid<SmallVec<[i32; 32]>>,
 }
 impl ALTSolver {
-    pub fn new<const ALLOW_DIAGONAL: bool>(
+    pub fn new_from_landmarks<const ALLOW_DIAGONAL: bool>(
         landmarks: Vec<Point>,
         grid: &mut PathingGrid<ALLOW_DIAGONAL>,
     ) -> ALTSolver {
         let d = DijkstraSolver;
-        let mut landmark_distances_flipped = Vec::new();
+        let mut landmark_distances = SimpleGrid::new(grid.width(), grid.height(), SmallVec::new());
         for landmark in &landmarks {
-            let mut dists = SimpleValueGrid::new(grid.width(), grid.height(), i32::MAX);
             let mut ct = grid.context.lock().unwrap();
             ct.astar_jps(
                 &landmark,
                 |parent, node| d.successors(grid, *parent, node, &|_| false),
                 |_| 0,
                 |_| false,
-            )
-            .map(|(v, _c)| v);
+            );
             for (p, (_, c)) in &ct.parents {
-                dists.set_point(*p, *c);
+                landmark_distances.get_point_mut(*p).unwrap().push(*c);
             }
-            landmark_distances_flipped.push(dists);
         }
+        ALTSolver {
+            landmarks,
+            landmark_distances,
+        }
+    }
+    pub fn new_greedy<const ALLOW_DIAGONAL: bool>(
+        initial_landmark: Point,
+        landmark_count: usize,
+        grid: &mut PathingGrid<ALLOW_DIAGONAL>,
+    ) -> ALTSolver {
+        let d = DijkstraSolver;
+        let mut landmarks = vec![initial_landmark];
         let mut landmark_distances = SimpleGrid::new(grid.width(), grid.height(), SmallVec::new());
-        for grid in landmark_distances_flipped {
+        while landmarks.len() < landmark_count {
+            let landmark = landmarks.last().unwrap();
+            let mut ct = grid.context.lock().unwrap();
+            ct.astar_jps(
+                &landmark,
+                |parent, node| d.successors(grid, *parent, node, &|_| false),
+                |_| 0,
+                |_| false,
+            );
+            for (p, (_, c)) in &ct.parents {
+                landmark_distances.get_point_mut(*p).unwrap().push(*c);
+            }
+            let mut max_point = *landmark;
+            let mut max_cost = 0;
             for x in 0..grid.width() as i32 {
                 for y in 0..grid.height() as i32 {
-                    landmark_distances
-                        .get_mut(x, y)
+                    // Look to maximize the minimal distance to any existing landmark for a greedy choice
+                    let min_c = *landmark_distances
+                        .get(x, y)
                         .unwrap()
-                        .push(grid.get(x, y));
+                        .iter()
+                        .min()
+                        .unwrap_or(&0);
+                    if min_c > max_cost {
+                        max_point = Point::new(x, y);
+                        max_cost = min_c;
+                    }
                 }
             }
+            // println!("Adding new point greedily: {max_point:?}, cost: {max_cost}");
+            landmarks.push(max_point);
         }
         ALTSolver {
             landmarks,
