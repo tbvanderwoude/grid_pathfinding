@@ -100,12 +100,16 @@ impl GridSolver for ALTSolver {
 
     fn heuristic<const ALLOW_DIAGONAL: bool>(
         &self,
-        _: &PathingGrid<ALLOW_DIAGONAL>,
+        grid: &PathingGrid<ALLOW_DIAGONAL>,
         p1: &Point,
         p2: &Point,
     ) -> i32 {
         let g1 = self.landmark_distances.get_point(*p1).unwrap();
         let g2 = self.landmark_distances.get_point(*p2).unwrap();
-        zip(g1, g2).map(|(x, y)| (x - y).abs()).max().unwrap()
+        zip(g1, g2)
+            .map(|(x, y)| (x - y).abs())
+            .max()
+            .unwrap()
+            .max(self.cost(grid, p1, p2))
     }
 }
