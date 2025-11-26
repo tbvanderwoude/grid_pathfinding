@@ -14,20 +14,10 @@ pub fn convert_cost_to_unit_cost_float(cost: i32) -> f64 {
 pub trait GridSolver {
     type Successors: IntoIterator<Item = (Point, i32)>;
 
-    fn heuristic<const ALLOW_DIAGONAL: bool>(
-        &self,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
-        p1: &Point,
-        p2: &Point,
-    ) -> i32;
+    fn heuristic<const ALLOW_DIAGONAL: bool>(&self, p1: &Point, p2: &Point) -> i32;
 
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
-    fn cost<const ALLOW_DIAGONAL: bool>(
-        &self,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
-        p1: &Point,
-        p2: &Point,
-    ) -> i32 {
+    fn cost<const ALLOW_DIAGONAL: bool>(&self, p1: &Point, p2: &Point) -> i32 {
         if ALLOW_DIAGONAL {
             let delta_x = (p1.x - p2.x).abs();
             let delta_y = (p1.y - p2.y).abs();
@@ -61,7 +51,7 @@ pub trait GridSolver {
         for i in 1..n {
             let v_old = v;
             v = path[i];
-            let cost = self.cost(&pathing_grid, &v_old, &v);
+            let cost = self.cost::<ALLOW_DIAGONAL>(&v_old, &v);
             total_cost_int += cost;
         }
         total_cost_int
@@ -107,7 +97,7 @@ pub trait GridSolver {
         ct.astar_jps(
             &start,
             |parent, node| self.successors(grid, *parent, node, &|node_pos| *node_pos == goal),
-            |point| self.heuristic(grid, point, &goal),
+            |point| self.heuristic::<ALLOW_DIAGONAL>(point, &goal),
             |point| *point == goal,
         )
         .map(|(v, _c)| v)
@@ -131,11 +121,11 @@ pub trait GridSolver {
             &start,
             |parent, node| {
                 self.successors(grid, *parent, node, &|node_pos| {
-                    self.heuristic(grid, node_pos, &goal) <= D
+                    self.heuristic::<ALLOW_DIAGONAL>(node_pos, &goal) <= D
                 })
             },
-            |point| self.heuristic(grid, point, &goal),
-            |point| self.heuristic(grid, point, &goal) <= D,
+            |point| self.heuristic::<ALLOW_DIAGONAL>(point, &goal),
+            |point| self.heuristic::<ALLOW_DIAGONAL>(point, &goal) <= D,
         )
         .map(|(v, _c)| v)
     }
@@ -166,7 +156,7 @@ pub trait GridSolver {
             |point| {
                 goals
                     .iter()
-                    .map(|x| self.heuristic(grid, point, x))
+                    .map(|x| self.heuristic::<ALLOW_DIAGONAL>(point, x))
                     .min()
                     .unwrap()
             },

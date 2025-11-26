@@ -33,13 +33,8 @@ impl GridSolver for AstarSolver {
     }
 
     /// Just the normal cost times a heuristic factor.
-    fn heuristic<const ALLOW_DIAGONAL: bool>(
-        &self,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
-        p1: &Point,
-        p2: &Point,
-    ) -> i32 {
-        (self.cost(grid, p1, p2) as f32 * self.heuristic_factor) as i32
+    fn heuristic<const ALLOW_DIAGONAL: bool>(&self, p1: &Point, p2: &Point) -> i32 {
+        (self.cost::<ALLOW_DIAGONAL>(p1, p2) as f32 * self.heuristic_factor) as i32
     }
 }
 

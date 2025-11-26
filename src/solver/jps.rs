@@ -61,13 +61,8 @@ impl GridSolver for JPSSolver {
     }
 
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
-    fn heuristic<const ALLOW_DIAGONAL: bool>(
-        &self,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
-        p1: &Point,
-        p2: &Point,
-    ) -> i32 {
-        self.cost(grid, p1, p2)
+    fn heuristic<const ALLOW_DIAGONAL: bool>(&self, p1: &Point, p2: &Point) -> i32 {
+        self.cost::<ALLOW_DIAGONAL>(p1, p2)
     }
 }
 impl JPSSolver {

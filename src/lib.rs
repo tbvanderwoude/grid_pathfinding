@@ -23,7 +23,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::astar_jps::DefaultSearchContext;
 
-pub const ALLOW_CORNER_CUTTING: bool = false;
+pub const ALLOW_CORNER_CUTTING: bool = true;
 const EQUAL_EDGE_COST: bool = false;
 const GRAPH_PRUNING: bool = true;
 const N_SMALLVEC_SIZE: usize = 8;
