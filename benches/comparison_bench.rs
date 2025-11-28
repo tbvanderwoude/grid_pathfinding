@@ -19,9 +19,9 @@ fn dao_bench<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
         smallvec![false]
     };
     let bench_set = if ALLOW_DIAGONAL {
-        ["dao/arena", "dao/den312d", "dao/arena2"]
+        ["dao/arena2"]
     } else {
-        ["dao/arena", "dao/den009d", "dao/den312d"]
+        ["dao/arena2"]
     };
     for pruning in arr {
         for name in bench_set {
@@ -55,9 +55,9 @@ fn dao_bench_solver<const ALLOW_DIAGONAL: bool, S, FS>(
     FS: Fn(&mut PathingGrid<ALLOW_DIAGONAL>) -> S,
 {
     let bench_set = if ALLOW_DIAGONAL {
-        ["dao/arena", "dao/den312d", "dao/arena2"]
+        ["dao/arena2"]
     } else {
-        ["dao/arena", "dao/den009d", "dao/den312d"]
+        ["dao/arena2"]
     };
     for name in bench_set {
         let (bool_grid, scenarios) = get_benchmark(name.to_owned());
@@ -115,12 +115,13 @@ fn dao_bench_jps<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     }
 }
 
+const N_LANDMARKS: usize = 64;
 fn dao_bench_alt_mc<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     dao_bench_solver(
         c,
         "ALT (MC)",
         |pathing_grid: &mut PathingGrid<ALLOW_DIAGONAL>| {
-            let landmarks = generate_landmarks_mc(&pathing_grid, 64);
+            let landmarks = generate_landmarks_mc(&pathing_grid, N_LANDMARKS);
             ALTSolver::new_from_landmarks(landmarks, pathing_grid)
         },
     );
@@ -131,7 +132,7 @@ fn dao_bench_alt_greedy<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
         "ALT (greedy)",
         |pathing_grid: &mut PathingGrid<ALLOW_DIAGONAL>| {
             let landmarks = generate_landmarks_mc(&pathing_grid, 1);
-            ALTSolver::new_greedy(landmarks[0], 64, pathing_grid)
+            ALTSolver::new_greedy(landmarks[0], N_LANDMARKS, pathing_grid)
         },
     );
 }
@@ -149,15 +150,9 @@ fn dao_bench_dijkstra<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    // dao_bench<false>,
     dao_bench<true>,
-    // dao_bench_jps<false>,
     dao_bench_jps<true>,
     dao_bench_alt_greedy<true>,
     dao_bench_alt_mc<true>,
-    // dao_bench_astar<false>,
-    // dao_bench_astar<true>,
-    // dao_bench_dijkstra<false>,
-    // dao_bench_dijkstra<true>
 );
 criterion_main!(benches);
