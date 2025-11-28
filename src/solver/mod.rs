@@ -5,6 +5,7 @@ pub mod alt;
 pub mod astar;
 pub mod dijkstra;
 pub mod jps;
+pub mod landmarks;
 
 /// Converts the integer cost to an approximate floating point equivalent where cardinal directions have cost 1.0.
 pub fn convert_cost_to_unit_cost_float(cost: i32) -> f64 {
