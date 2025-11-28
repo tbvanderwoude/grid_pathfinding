@@ -114,8 +114,8 @@ fn distance_fuzzer<const ALLOW_DIAGONAL: bool>() {
                     .get_path_single_goal(&mut random_grid, start, end)
                     .unwrap();
 
-                let astar_cost = astar_solver.get_path_cost_float(&astar_path, &random_grid);
-                let jps_cost = jps_solver.get_path_cost_float(&jps_path, &random_grid);
+                let astar_cost = astar_solver.get_path_cost_float::<ALLOW_DIAGONAL>(&astar_path);
+                let jps_cost = jps_solver.get_path_cost_float::<ALLOW_DIAGONAL>(&jps_path);
                 if astar_cost >= tolerance {
                     let delta_dist = (jps_cost - astar_cost).abs() / astar_cost;
                     if delta_dist >= tolerance {
@@ -126,12 +126,12 @@ fn distance_fuzzer<const ALLOW_DIAGONAL: bool>() {
                         for (idx, &p) in jps_path.iter().enumerate().rev() {
                             let jps_suffix = &jps_path[idx..].to_vec();
                             let jps_suffix_cost =
-                                jps_solver.get_path_cost_float(jps_suffix, &random_grid);
+                                jps_solver.get_path_cost_float::<ALLOW_DIAGONAL>(jps_suffix);
                             let astar_suffix_path = astar_solver
                                 .get_path_single_goal(&mut random_grid, p, end)
                                 .expect("A* should find a path from intermediate JPS node");
-                            let astar_suffix_cost =
-                                astar_solver.get_path_cost_float(&astar_suffix_path, &random_grid);
+                            let astar_suffix_cost = astar_solver
+                                .get_path_cost_float::<ALLOW_DIAGONAL>(&astar_suffix_path);
 
                             let rel_diff = (jps_suffix_cost - astar_suffix_cost).abs()
                                 / astar_suffix_cost.max(1e-6);

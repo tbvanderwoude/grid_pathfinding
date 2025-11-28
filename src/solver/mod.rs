@@ -41,11 +41,7 @@ pub trait GridSolver {
     where
         F: Fn(&Point) -> bool;
 
-    fn get_path_cost<const ALLOW_DIAGONAL: bool>(
-        &self,
-        path: &Vec<Point>,
-        pathing_grid: &PathingGrid<ALLOW_DIAGONAL>,
-    ) -> i32 {
+    fn get_path_cost<const ALLOW_DIAGONAL: bool>(&self, path: &Vec<Point>) -> i32 {
         let mut v = path[0];
         let n = path.len();
         let mut total_cost_int = 0;
@@ -57,12 +53,8 @@ pub trait GridSolver {
         }
         total_cost_int
     }
-    fn get_path_cost_float<const ALLOW_DIAGONAL: bool>(
-        &self,
-        path: &Vec<Point>,
-        pathing_grid: &PathingGrid<ALLOW_DIAGONAL>,
-    ) -> f64 {
-        convert_cost_to_unit_cost_float(self.get_path_cost(path, pathing_grid))
+    fn get_path_cost_float<const ALLOW_DIAGONAL: bool>(&self, path: &Vec<Point>) -> f64 {
+        convert_cost_to_unit_cost_float(self.get_path_cost::<ALLOW_DIAGONAL>(path))
     }
     fn get_path_single_goal<const ALLOW_DIAGONAL: bool>(
         &self,
