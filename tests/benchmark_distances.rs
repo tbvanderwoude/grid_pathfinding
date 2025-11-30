@@ -33,7 +33,7 @@ fn verify_solution_distance_jps() {
                 .get_path_single_goal(&mut pathing_grid, *start, *end)
                 .unwrap();
             save_path(path.clone(), "path.csv").unwrap();
-            let float_cost = solver.get_path_cost_float(&path, &pathing_grid);
+            let float_cost = solver.get_path_cost_float::<true>(&path);
             println!("My distance: {float_cost}");
             if *distance >= 0.01 {
                 let delta_dist = (float_cost - distance).abs() / distance;
@@ -60,7 +60,7 @@ fn verify_solution_distance_astar() {
                 .get_path_single_goal(&mut pathing_grid, *start, *end)
                 .unwrap();
             save_path(path.clone(), "path.csv").unwrap();
-            let float_cost = solver.get_path_cost_float(&path, &pathing_grid);
+            let float_cost = solver.get_path_cost_float::<true>(&path);
             println!("My distance: {float_cost}");
             if *distance >= 0.01 {
                 let delta_dist = (float_cost - distance).abs() / distance;

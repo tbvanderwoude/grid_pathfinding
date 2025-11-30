@@ -23,12 +23,7 @@ impl GridSolver for DijkstraSolver {
     }
 
     /// Just the cost times a heuristic factor.
-    fn heuristic<const ALLOW_DIAGONAL: bool>(
-        &self,
-        _: &PathingGrid<ALLOW_DIAGONAL>,
-        _: &Point,
-        _: &Point,
-    ) -> i32 {
+    fn heuristic<const ALLOW_DIAGONAL: bool>(&self, _: &Point, _: &Point) -> i32 {
         0
     }
 }
