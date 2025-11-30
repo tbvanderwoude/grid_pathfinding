@@ -1,15 +1,14 @@
 [package]
 name = "grid_pathfinding"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Thom van der Woude <tbvanderwoude@protonmail.com>"]
 edition = "2021"
-description = "Pathfinding using JPS and connected components on a grid."
-keywords = ["pathfinding","grid","jump","point","JPS"]
+description = "Pathfinding using jump point search (JPS) and connected components on a 2D grid."
+keywords = ["pathfinding","grid","jump","point","JPS","Astar"]
 categories = ["game-development","simulation","algorithms"]
 license = "MIT"
 repository = "https://github.com/tbvanderwoude/grid_pathfinding"
 readme = "README.md"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 petgraph = "0.8"
@@ -18,7 +17,7 @@ fxhash = "0.2"
 num-traits = "0.2"
 grid_util = { version = "0.2", features = ["smallvec"]}
 log = "0.4"
-smallvec = "1.13.2"
+smallvec = "1.13"
 
 [lib]
 bench = false
@@ -26,7 +25,7 @@ bench = false
 [dev-dependencies]
 criterion = { version = "0.7", features = ["html_reports"] }
 grid_pathfinding_benchmark = { path = "grid_pathfinding_benchmark" }
-rand = "0.9.2"
+rand = "0.9"
 
 [[bench]]
 name = "comparison_bench"
