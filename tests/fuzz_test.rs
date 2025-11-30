@@ -47,36 +47,32 @@ fn visualize_grid<const ALLOW_DIAGONAL: bool>(
     }
 }
 
-fn reachable_fuzzer<const ALLOW_DIAGONAL: bool>() {
+fn reachable_fuzzer<const ALLOW_DIAGONAL: bool, S, FS>(create_solver: FS)
+where
+    S: GridSolver,
+    FS: Fn(&mut PathingGrid<ALLOW_DIAGONAL>) -> S,
+{
     const N: usize = 10;
     const N_GRIDS: usize = 10000;
     let mut rng = StdRng::seed_from_u64(0);
-    let arr: SmallVec<[bool; 2]> = if ALLOW_DIAGONAL {
-        smallvec![false, true]
-    } else {
-        smallvec![false]
-    };
-    for improved_pruning in arr {
-        let mut random_grids: Vec<PathingGrid<ALLOW_DIAGONAL>> = Vec::new();
-        for _ in 0..N_GRIDS {
-            random_grids.push(random_grid(N, N, &mut rng))
-        }
+    let mut random_grids: Vec<PathingGrid<ALLOW_DIAGONAL>> = Vec::new();
+    for _ in 0..N_GRIDS {
+        random_grids.push(random_grid(N, N, &mut rng))
+    }
 
-        let start = Point::new(0, 0);
-        let end = Point::new(N as i32 - 1, N as i32 - 1);
-        for mut random_grid in random_grids {
-            let mut solver = JPSSolver::new(&random_grid, improved_pruning);
-            random_grid.set_point(start, false);
-            random_grid.set_point(end, false);
-            solver.initialize(&random_grid);
-            let reachable = random_grid.reachable(&start, &end);
-            let path = solver.get_path_single_goal(&mut random_grid, start, end);
-            // Show the grid if a path is not found
-            if path.is_some() != reachable {
-                visualize_grid(&random_grid, &start, &end);
-            }
-            assert!(path.is_some() == reachable);
+    let start = Point::new(0, 0);
+    let end = Point::new(N as i32 - 1, N as i32 - 1);
+    for mut random_grid in random_grids {
+        random_grid.set_point(start, false);
+        random_grid.set_point(end, false);
+        let solver = create_solver(&mut random_grid);
+        let reachable = random_grid.reachable(&start, &end);
+        let path = solver.get_path_single_goal(&mut random_grid, start, end);
+        // Show the grid if a path is not found
+        if path.is_some() != reachable {
+            visualize_grid(&random_grid, &start, &end);
         }
+        assert!(path.is_some() == reachable);
     }
 }
 
@@ -158,14 +154,31 @@ fn distance_fuzzer<const ALLOW_DIAGONAL: bool>() {
     }
 }
 
-#[test]
-fn fuzz_reachable() {
-    reachable_fuzzer::<false>()
+fn fuzz_reachable_jps_variants<const ALLOW_DIAGONAL: bool>() {
+    let arr: SmallVec<[bool; 2]> = if ALLOW_DIAGONAL {
+        smallvec![false, true]
+    } else {
+        smallvec![false]
+    };
+    for improved_pruning in arr {
+        reachable_fuzzer::<ALLOW_DIAGONAL, _, _>(
+            |pathing_grid: &mut PathingGrid<ALLOW_DIAGONAL>| {
+                let mut solver = JPSSolver::new(&pathing_grid, improved_pruning);
+                solver.initialize(&pathing_grid);
+                solver
+            },
+        )
+    }
 }
 
 #[test]
-fn fuzz_reachable_diagonal() {
-    reachable_fuzzer::<true>()
+fn fuzz_reachable_jps() {
+    fuzz_reachable_jps_variants::<false>()
+}
+
+#[test]
+fn fuzz_reachable_jps_diagonal() {
+    fuzz_reachable_jps_variants::<true>()
 }
 
 #[test]
