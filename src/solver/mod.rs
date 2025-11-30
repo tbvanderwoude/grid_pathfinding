@@ -23,7 +23,7 @@ pub trait GridSolver {
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
     fn cost<const ALLOW_DIAGONAL: bool>(
         &self,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        _grid: &PathingGrid<ALLOW_DIAGONAL>,
         p1: &Point,
         p2: &Point,
     ) -> i32 {

@@ -1,14 +1,11 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use grid_pathfinding::{
     pathing_grid::PathingGrid,
-    solver::{
-        astar::AstarSolver, dijkstra::DijkstraSolver, jps::JPSSolver, GridSolver,
-    },
+    solver::{astar::AstarSolver, dijkstra::DijkstraSolver, jps::JPSSolver, GridSolver},
     Pathfinder,
 };
 use grid_pathfinding_benchmark::*;
-use grid_util::{grid::ValueGrid, Point};
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use grid_util::grid::ValueGrid;
 use smallvec::{smallvec, SmallVec};
 use std::hint::black_box;
 
@@ -77,23 +74,6 @@ fn dao_bench_solver<const ALLOW_DIAGONAL: bool, S, FS>(
         });
     }
 }
-pub fn generate_landmarks_mc<const ALLOW_DIAGONAL: bool>(
-    pathing_grid: &PathingGrid<ALLOW_DIAGONAL>,
-    number: usize,
-) -> Vec<Point> {
-    let mut landmarks = Vec::new();
-    let mut rng = StdRng::seed_from_u64(0);
-    while landmarks.len() < number {
-        let p = Point::new(
-            rng.random_range(0..pathing_grid.width() as i32),
-            rng.random_range(0..pathing_grid.height() as i32),
-        );
-        if pathing_grid.can_move_to_simple(p) {
-            landmarks.push(p);
-        }
-    }
-    landmarks
-}
 
 fn dao_bench_jps<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     let arr: SmallVec<[bool; 2]> = if ALLOW_DIAGONAL {
@@ -126,9 +106,5 @@ fn dao_bench_dijkstra<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     });
 }
 
-criterion_group!(
-    benches,
-    dao_bench<true>,
-    dao_bench_jps<true>,
-);
+criterion_group!(benches, dao_bench<true>, dao_bench_jps<true>,);
 criterion_main!(benches);
