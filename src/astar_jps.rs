@@ -17,7 +17,7 @@ use std::hash::Hash;
 
 #[derive(Clone, Debug)]
 
-struct SearchNode<K> {
+pub(crate) struct SearchNode<K> {
     estimated_cost: K,
     cost: K,
     index: usize,
@@ -68,24 +68,55 @@ where
     path
 }
 
+pub trait Frontier<C>: Default
+where
+    C: Zero + Ord + Copy,
+{
+    fn clear(&mut self);
+    fn pop(&mut self) -> Option<SearchNode<C>>;
+    fn push(&mut self, item: SearchNode<C>);
+}
+
+impl<C> Frontier<C> for BinaryHeap<SearchNode<C>>
+where
+    C: Zero + Ord + Copy,
+{
+    fn clear(&mut self) {
+        self.clear();
+    }
+
+    fn pop(&mut self) -> Option<SearchNode<C>> {
+        self.pop()
+    }
+
+    fn push(&mut self, item: SearchNode<C>) {
+        self.push(item);
+    }
+}
+
 /// [AstarContext] represents the search fringe and node parent map, facilitating reuse of memory allocations.
 #[derive(Clone, Debug)]
-pub struct AstarContext<N, C> {
-    fringe: BinaryHeap<SearchNode<C>>,
+pub struct SearchContext<N, C, F> {
+    fringe: F,
     parents: FxIndexMap<N, (usize, C)>,
 }
 
-impl<N, C> AstarContext<N, C>
+pub type BinaryHeapSearchContext<N, C> = SearchContext<N, C, BinaryHeap<SearchNode<C>>>;
+pub type DefaultSearchContext<N, C> = BinaryHeapSearchContext<N, C>;
+
+impl<N, C, F> SearchContext<N, C, F>
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
+    F: Frontier<C>,
 {
-    pub fn new() -> AstarContext<N, C> {
-        AstarContext {
-            fringe: BinaryHeap::new(),
+    pub fn new() -> SearchContext<N, C, F> {
+        SearchContext {
+            fringe: F::default(),
             parents: FxIndexMap::default(),
         }
     }
+
     pub fn astar_jps<FN, IN, FH, FS>(
         &mut self,
         start: &N,
@@ -167,12 +198,12 @@ pub fn astar_jps<N, C, FN, IN, FH, FS>(
 ) -> Option<(Vec<N>, C)>
 where
     N: Eq + Hash + Clone,
-    C: Zero + Ord + Copy,
+    C: Zero + Ord + Copy + Hash,
     FN: FnMut(&Option<&N>, &N) -> IN,
     IN: IntoIterator<Item = (N, C)>,
     FH: FnMut(&N) -> C,
     FS: FnMut(&N) -> bool,
 {
-    let mut search = AstarContext::new();
+    let mut search = DefaultSearchContext::new();
     search.astar_jps(start, successors, heuristic, success)
 }
