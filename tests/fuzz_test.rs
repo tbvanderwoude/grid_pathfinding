@@ -1,7 +1,9 @@
 /// Fuzzes pathfinding system by checking for many random grids that a path is always found if the goal is reachable
 /// by being part of the same connected component. All system settings (diagonals, improved pruning) are tested.
 use grid_pathfinding::{
-    ALLOW_CORNER_CUTTING, pathing_grid::PathingGrid, solver::{GridSolver, alt::ALTSolver, astar::AstarSolver, jps::JPSSolver}
+    pathing_grid::PathingGrid,
+    solver::{alt::ALTSolver, astar::AstarSolver, jps::JPSSolver, GridSolver},
+    ALLOW_CORNER_CUTTING,
 };
 use grid_util::*;
 use rand::prelude::*;
@@ -159,13 +161,11 @@ fn fuzz_reachable_jps_variants<const ALLOW_DIAGONAL: bool>() {
         smallvec![false]
     };
     for improved_pruning in arr {
-        reachable_fuzzer::<ALLOW_DIAGONAL, _, _>(
-            |pathing_grid| {
-                let mut solver = JPSSolver::new(&pathing_grid, improved_pruning);
-                solver.initialize(&pathing_grid);
-                solver
-            },
-        )
+        reachable_fuzzer::<ALLOW_DIAGONAL, _, _>(|pathing_grid| {
+            let mut solver = JPSSolver::new(&pathing_grid, improved_pruning);
+            solver.initialize(&pathing_grid);
+            solver
+        })
     }
 }
 
@@ -181,16 +181,12 @@ fn fuzz_reachable_jps_diagonal() {
 
 #[test]
 fn fuzz_reachable_alt() {
-    reachable_fuzzer::<false, _, _>(
-        |pathing_grid| {
-            ALTSolver::new_greedy(Point::new(0, 0), 2, pathing_grid)
-        },
-    );
-    reachable_fuzzer::<true, _, _>(
-        |pathing_grid| {
-            ALTSolver::new_greedy(Point::new(0, 0), 2, pathing_grid)
-        },
-    )
+    reachable_fuzzer::<false, _, _>(|pathing_grid| {
+        ALTSolver::new_greedy(Point::new(0, 0), 2, pathing_grid)
+    });
+    reachable_fuzzer::<true, _, _>(|pathing_grid| {
+        ALTSolver::new_greedy(Point::new(0, 0), 2, pathing_grid)
+    })
 }
 
 #[test]

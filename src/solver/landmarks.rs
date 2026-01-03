@@ -3,6 +3,7 @@ use core::panic;
 use crate::solver::dijkstra::DijkstraSolver;
 use crate::{pathing_grid::PathingGrid, solver::GridSolver};
 use grid_util::{Grid, Point, SimpleGrid, ValueGrid};
+use log::warn;
 use smallvec::SmallVec;
 use std::iter::zip;
 
@@ -76,7 +77,9 @@ impl LandmarkMap {
                 match max_point {
                     Some(p) => landmarks.push(p),
                     None => {
-                        panic!("No point that is maximally far away from existing ones was found")
+                        let l = landmarks.len();
+                        warn!("No new landmark maximally far away from existing ones was found, returning only {l}/{landmark_count} landmarks");
+                        break;
                     }
                 }
             } else {
