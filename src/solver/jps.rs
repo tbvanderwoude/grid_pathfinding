@@ -36,6 +36,7 @@ impl GridSolver for JPSSolver {
                     if let Some((jumped_node, cost)) = self.jump(*node, c, dir, goal, grid) {
                         // If improved pruning is enabled, expand any diagonal unforced nodes
                         if self.improved_pruning
+                            && ALLOW_CORNER_CUTTING
                             && dir.diagonal()
                             && !goal(&jumped_node)
                             && !self.is_forced(dir, &jumped_node)
@@ -122,19 +123,28 @@ impl JPSSolver {
         let mut forced_mask: u8 = 0;
         for dir_num in 0..8 {
             if dir_num % 2 == 1 {
+                // With no corner cutting, diagonal arrivals never have forced neighbours.
                 if ALLOW_CORNER_CUTTING
                     && (!self.indexed_neighbor(node, 3 + dir_num)
                         || !self.indexed_neighbor(node, 5 + dir_num))
                 {
                     forced_mask |= 1 << dir_num;
                 }
-            } else {
+            } else if ALLOW_CORNER_CUTTING {
                 if !self.indexed_neighbor(node, 2 + dir_num)
                     || !self.indexed_neighbor(node, 6 + dir_num)
                 {
                     forced_mask |= 1 << dir_num;
                 }
-            };
+            } else if (!self.indexed_neighbor(node, 3 + dir_num)
+                && self.indexed_neighbor(node, 2 + dir_num))
+                || (!self.indexed_neighbor(node, 5 + dir_num)
+                    && self.indexed_neighbor(node, 6 + dir_num))
+            {
+                // No corner cutting: a straight arrival is a jump point when an obstacle
+                // behind either side forces the corresponding side successor.
+                forced_mask |= 1 << dir_num;
+            }
         }
         forced_mask
     }
@@ -151,26 +161,37 @@ impl JPSSolver {
             neighbours &= 0b01010101;
             n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
         } else if dir.diagonal() {
+            // Diagonal arrivals have three natural successors. Forced diagonal-arrival
+            // successors exist only in the corner-cutting movement model.
             n_mask = 0b10000011_u8.rotate_left(dir_num as u32);
+            if ALLOW_CORNER_CUTTING {
+                if !self.indexed_neighbor(node, 3 + dir_num) {
+                    n_mask |= 1 << ((dir_num + 2) % 8);
+                }
+                if !self.indexed_neighbor(node, 5 + dir_num) {
+                    n_mask |= 1 << ((dir_num + 6) % 8);
+                }
+            }
+        } else if ALLOW_CORNER_CUTTING {
+            n_mask = 0b00000001 << dir_num;
+            if !self.indexed_neighbor(node, 2 + dir_num) {
+                n_mask |= 1 << ((dir_num + 1) % 8);
+            }
+            if !self.indexed_neighbor(node, 6 + dir_num) {
+                n_mask |= 1 << ((dir_num + 7) % 8);
+            }
+        } else {
+            // No corner cutting: one natural straight successor plus at most four
+            // forced successors. An obstacle behind a side can force both the side
+            // cardinal and the forward-side diagonal successor.
+            n_mask = 1 << dir_num;
             if !self.indexed_neighbor(node, 3 + dir_num) {
+                n_mask |= 1 << ((dir_num + 1) % 8);
                 n_mask |= 1 << ((dir_num + 2) % 8);
             }
             if !self.indexed_neighbor(node, 5 + dir_num) {
                 n_mask |= 1 << ((dir_num + 6) % 8);
-            }
-        } else {
-            if ALLOW_CORNER_CUTTING {
-                n_mask = 0b00000001 << dir_num;
-                if !self.indexed_neighbor(node, 2 + dir_num) {
-                    n_mask |= 1 << ((dir_num + 1) % 8);
-                }
-                if !self.indexed_neighbor(node, 6 + dir_num) {
-                    n_mask |= 1 << ((dir_num + 7) % 8);
-                }
-            } else {
-                // TODO: look into whether this is minimal, this at least makes the algorithm
-                // optimal and complete following the no corner cutting rule
-                n_mask = 0b11010111_u8.rotate_left(dir_num as u32);
+                n_mask |= 1 << ((dir_num + 7) % 8);
             }
         }
         let comb_mask = neighbours & n_mask;
@@ -248,16 +269,7 @@ impl JPSSolver {
             // When using a 4-neighborhood (specified by setting allow_diagonal_move to false),
             // jumps perpendicular to the direction are performed. This is necessary to not miss the
             // goal when passing by.
-            if !ALLOW_DIAGONAL || !ALLOW_CORNER_CUTTING && !direction.diagonal() {
-                if ALLOW_DIAGONAL {
-                    let diag_1 = direction.rotate_ccw(1);
-                    let diag_2 = direction.rotate_cw(1);
-                    if self.jump(initial, 1, diag_1, goal, grid).is_some()
-                        || self.jump(initial, 1, diag_2, goal, grid).is_some()
-                    {
-                        return Some((initial, cost));
-                    }
-                }
+            if !ALLOW_DIAGONAL {
                 let perp_1 = direction.rotate_ccw(2);
                 let perp_2 = direction.rotate_cw(2);
                 if self.jump_straight(initial, 1, perp_1, goal, grid).is_some()
