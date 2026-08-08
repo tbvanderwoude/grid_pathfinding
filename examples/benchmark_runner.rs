@@ -12,15 +12,15 @@ fn main() {
 
         let (bool_grid, scenarios) = get_benchmark(name);
         // for (allow_diag, pruning) in [(false, false), (true, false), (true, true)] {
-        let mut pathing_grid: Pathfinder<true> =
+        let mut pathfinder: Pathfinder<true> =
             Pathfinder::new(bool_grid.width, bool_grid.height, true);
-        pathing_grid.grid = bool_grid.clone();
-        pathing_grid.improved_pruning = false;
-        pathing_grid.initialize();
-        pathing_grid.generate_components();
+        pathfinder.grid.grid = bool_grid.clone();
+        pathfinder.set_improved_pruning(false);
+        pathfinder.initialize();
+        pathfinder.generate_components();
         let number_of_scenarios = scenarios.len() as u32;
         let before = Instant::now();
-        run_scenarios(&pathing_grid, &scenarios);
+        run_scenarios(&mut pathfinder, &scenarios);
         let elapsed = before.elapsed();
         println!(
             "\tElapsed time: {:.2?}; per scenario: {:.2?}",
@@ -33,7 +33,7 @@ fn main() {
 }
 
 pub fn run_scenarios<const ALLOW_DIAGONAL: bool>(
-    pathing_grid: &Pathfinder<ALLOW_DIAGONAL>,
+    pathing_grid: &mut Pathfinder<ALLOW_DIAGONAL>,
     scenarios: &Vec<(Point, Point, f64)>,
 ) {
     for (start, goal, _) in scenarios {

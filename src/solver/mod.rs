@@ -113,7 +113,10 @@ pub trait GridSolver {
     }
 
     /// The raw waypoints (jump points) from which [get_path_single_goal](Self::get_path_single_goal) makes a path.
-    fn get_waypoints_single_goal_approximate<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
+    fn get_waypoints_single_goal_approximate<
+        const ALLOW_DIAGONAL: bool,
+        const CUT_CORNERS: bool,
+    >(
         &self,
         grid: &mut PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         start: Point,

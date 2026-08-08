@@ -11,7 +11,7 @@ use std::hint::black_box;
 
 fn dao_bench<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     let arr: SmallVec<[bool; 2]> = if ALLOW_DIAGONAL {
-        smallvec![false]
+        smallvec![false,true]
     } else {
         smallvec![false]
     };
@@ -25,8 +25,8 @@ fn dao_bench<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
             let (bool_grid, scenarios) = get_benchmark(name.to_owned());
             let mut pathing_grid: Pathfinder<ALLOW_DIAGONAL> =
                 Pathfinder::new(bool_grid.width, bool_grid.height, true);
-            pathing_grid.grid = bool_grid.clone();
-            pathing_grid.improved_pruning = pruning;
+            pathing_grid.grid.grid = bool_grid.clone();
+            pathing_grid.set_improved_pruning(pruning);
             pathing_grid.initialize();
             pathing_grid.generate_components();
             let diag_str = if ALLOW_DIAGONAL { "8-grid" } else { "4-grid" };
@@ -77,7 +77,7 @@ fn dao_bench_solver<const ALLOW_DIAGONAL: bool, S, FS>(
 
 fn dao_bench_jps<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     let arr: SmallVec<[bool; 2]> = if ALLOW_DIAGONAL {
-        smallvec![false]
+        smallvec![false,true]
     } else {
         smallvec![false]
     };

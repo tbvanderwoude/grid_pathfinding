@@ -14,19 +14,17 @@ pub mod solver;
 use astar_jps::SearchContext;
 use core::fmt;
 use grid_util::direction::Direction;
-use grid_util::grid::{BoolGrid, SimpleValueGrid, ValueGrid};
+use grid_util::grid::ValueGrid;
 use grid_util::point::Point;
-use petgraph::unionfind::UnionFind;
-use smallvec::SmallVec;
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
 
-use crate::astar_jps::DefaultSearchContext;
+use crate::pathing_grid::PathingGrid;
+use crate::solver::jps::JPSSolver;
+use crate::solver::GridSolver;
 
 pub const DEFAULT_CUT_CORNERS: bool = true;
 pub const DEFAULT_IMPROVED_PRUNING: bool = false;
 const EQUAL_EDGE_COST: bool = false;
-const GRAPH_PRUNING: bool = true;
 const N_SMALLVEC_SIZE: usize = 8;
 
 // Costs for diagonal and cardinal moves.
@@ -75,349 +73,29 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
 /// Implements [Grid] by building on [BoolGrid].
 #[derive(Clone, Debug)]
 pub struct Pathfinder<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool = DEFAULT_CUT_CORNERS> {
-    pub grid: BoolGrid,
-    pub neighbours: SimpleValueGrid<u8>,
-    pub jump_point: SimpleValueGrid<u8>,
-    pub components: UnionFind<usize>,
-    pub components_dirty: bool,
-    pub heuristic_factor: f32,
-    pub improved_pruning: bool,
-    context: Arc<Mutex<DefaultSearchContext<Point, i32>>>,
+    pub solver: JPSSolver,
+    pub grid: PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
 }
 
-impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> Default for Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS> {
+impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> Pathfinder<ALLOW_DIAGONAL,CUT_CORNERS>{
+    pub fn set_improved_pruning(&mut self, improved_pruning: bool){
+        self.solver.improved_pruning = improved_pruning;
+    }
+
+}
+impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> Default
+    for Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS>
+{
     fn default() -> Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS> {
         let mut grid = Pathfinder {
-            grid: BoolGrid::default(),
-            neighbours: SimpleValueGrid::default(),
-            jump_point: SimpleValueGrid::default(),
-            components: UnionFind::new(0),
-            components_dirty: false,
-            improved_pruning: true,
-            heuristic_factor: 1.0,
-            context: Arc::new(Mutex::new(SearchContext::new())),
+            solver: JPSSolver::default(),
+            grid: PathingGrid::default(),
         };
         grid.initialize();
         grid
     }
 }
 impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS> {
-    fn neighborhood_points(&self, point: &Point) -> SmallVec<[Point; 8]> {
-        if ALLOW_DIAGONAL {
-            point.moore_neighborhood_smallvec()
-        } else {
-            point.neumann_neighborhood_smallvec()
-        }
-    }
-    fn neighborhood_points_and_cost(
-        &self,
-        pos: &Point,
-    ) -> SmallVec<[(Point, i32); N_SMALLVEC_SIZE]> {
-        self.neighborhood_points(pos)
-            .into_iter()
-            .filter(|p| self.can_move_to(*p, *pos))
-            // See comment in pruned_neighborhood about cost calculation
-            .map(move |p| (p, (pos.dir_obj(&p).num() % 2) * (D - C) + C))
-            .collect::<SmallVec<[_; N_SMALLVEC_SIZE]>>()
-    }
-    /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
-    pub fn heuristic(&self, p1: &Point, p2: &Point) -> i32 {
-        if ALLOW_DIAGONAL {
-            let delta_x = (p1.x - p2.x).abs();
-            let delta_y = (p1.y - p2.y).abs();
-            // Formula from https://github.com/riscy/a_star_on_grids
-            // to efficiently compute the cost of a path taking the maximal amount
-            // of diagonal steps before going straight
-            (E * (delta_x - delta_y).abs() + D * (delta_x + delta_y)) / 2
-        } else {
-            p1.manhattan_distance(p2) * C
-        }
-    }
-    fn can_move_to(&self, pos: Point, start: Point) -> bool {
-        if CUT_CORNERS {
-            self.can_move_to_simple(pos)
-        } else {
-            debug_assert!((start.x - pos.x).abs() <= 1 && (start.y - pos.y).abs() <= 1);
-            self.can_move_to_simple(pos)
-                && (!self.grid.get_point(Point::new(start.x, pos.y))
-                    && !self.grid.get_point(Point::new(pos.x, start.y)))
-        }
-    }
-    fn can_move_to_simple(&self, pos: Point) -> bool {
-        self.point_in_bounds(pos) && !self.grid.get_point(pos)
-    }
-    fn in_bounds(&self, x: i32, y: i32) -> bool {
-        self.grid.index_in_bounds(x, y)
-    }
-    /// The neighbour indexing used here corresponds to that used in [grid_util::Direction].
-    fn indexed_neighbor(&self, node: &Point, index: i32) -> bool {
-        (self.neighbours.get_point(*node) & 1 << (index.rem_euclid(8))) != 0
-    }
-    fn is_forced(&self, dir: Direction, node: &Point) -> bool {
-        let dir_num = dir.num();
-        self.jump_point.get_point(*node) & (1 << dir_num) != 0
-    }
-
-    fn forced_mask(&self, node: &Point) -> u8 {
-        let mut forced_mask: u8 = 0;
-        for dir_num in 0..8 {
-            if dir_num % 2 == 1 {
-                if CUT_CORNERS
-                    && (!self.indexed_neighbor(node, 3 + dir_num)
-                        || !self.indexed_neighbor(node, 5 + dir_num))
-                {
-                    forced_mask |= 1 << dir_num;
-                }
-            } else if CUT_CORNERS {
-                if !self.indexed_neighbor(node, 2 + dir_num)
-                    || !self.indexed_neighbor(node, 6 + dir_num)
-                {
-                    forced_mask |= 1 << dir_num;
-                }
-            } else if (!self.indexed_neighbor(node, 3 + dir_num)
-                && self.indexed_neighbor(node, 2 + dir_num))
-                || (!self.indexed_neighbor(node, 5 + dir_num)
-                    && self.indexed_neighbor(node, 6 + dir_num))
-            {
-                forced_mask |= 1 << dir_num;
-            }
-        }
-        forced_mask
-    }
-
-    fn pruned_neighborhood<'a>(
-        &self,
-        dir: Direction,
-        node: &'a Point,
-    ) -> impl Iterator<Item = (Point, i32)> + 'a {
-        let dir_num = dir.num();
-        let mut n_mask: u8;
-        let mut neighbours = self.neighbours.get_point(*node);
-        if !ALLOW_DIAGONAL {
-            neighbours &= 0b01010101;
-            n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
-        } else if dir.diagonal() {
-            n_mask = 0b10000011_u8.rotate_left(dir_num as u32);
-            if CUT_CORNERS {
-                if !self.indexed_neighbor(node, 3 + dir_num) {
-                    n_mask |= 1 << ((dir_num + 2) % 8);
-                }
-                if !self.indexed_neighbor(node, 5 + dir_num) {
-                    n_mask |= 1 << ((dir_num + 6) % 8);
-                }
-            }
-        } else if CUT_CORNERS {
-            n_mask = 0b00000001 << dir_num;
-            if !self.indexed_neighbor(node, 2 + dir_num) {
-                n_mask |= 1 << ((dir_num + 1) % 8);
-            }
-            if !self.indexed_neighbor(node, 6 + dir_num) {
-                n_mask |= 1 << ((dir_num + 7) % 8);
-            }
-        } else {
-            n_mask = 1 << dir_num;
-            if !self.indexed_neighbor(node, 3 + dir_num) {
-                n_mask |= 1 << ((dir_num + 1) % 8);
-                n_mask |= 1 << ((dir_num + 2) % 8);
-            }
-            if !self.indexed_neighbor(node, 5 + dir_num) {
-                n_mask |= 1 << ((dir_num + 6) % 8);
-                n_mask |= 1 << ((dir_num + 7) % 8);
-            }
-        }
-        let comb_mask = neighbours & n_mask;
-        (0..8)
-            .step_by(if ALLOW_DIAGONAL { 1 } else { 2 })
-            .filter(move |x| comb_mask & (1 << *x) != 0)
-            // (dir_num % 2) * (D-C) + C)
-            // is an optimized version without a conditional of
-            // if dir.diagonal() {D} else {C}
-            .map(move |d| (node.moore_neighbor(d), (d % 2) * (D - C) + C))
-    }
-
-    /// Straight jump in a cardinal direction.
-    fn jump_straight<F>(
-        &self,
-        mut initial: Point,
-        mut cost: i32,
-        direction: Direction,
-        goal: &F,
-    ) -> Option<(Point, i32)>
-    where
-        F: Fn(&Point) -> bool,
-    {
-        debug_assert!(!direction.diagonal());
-        loop {
-            initial = initial + direction;
-            if !self.can_move_to_simple(initial) {
-                return None;
-            }
-
-            if goal(&initial) || self.is_forced(direction, &initial) {
-                return Some((initial, cost));
-            }
-
-            // Straight jumps always take cardinal cost
-            cost += C;
-        }
-    }
-
-    /// Performs the jumping of node neighbours, skipping over unnecessary nodes until a goal or a forced node is found.
-    fn jump<F>(
-        &self,
-        mut initial: Point,
-        mut cost: i32,
-        direction: Direction,
-        goal: &F,
-    ) -> Option<(Point, i32)>
-    where
-        F: Fn(&Point) -> bool,
-    {
-        let mut new_initial: Point;
-        loop {
-            new_initial = initial + direction;
-            if !self.can_move_to(new_initial, initial) {
-                return None;
-            }
-            initial = new_initial;
-
-            if goal(&initial) || self.is_forced(direction, &initial) {
-                return Some((initial, cost));
-            }
-            if direction.diagonal()
-                && (self
-                    .jump_straight(initial, 1, direction.x_dir(), goal)
-                    .is_some()
-                    || self
-                        .jump_straight(initial, 1, direction.y_dir(), goal)
-                        .is_some())
-            {
-                return Some((initial, cost));
-            }
-
-            // When using a 4-neighborhood (specified by setting allow_diagonal_move to false),
-            // jumps perpendicular to the direction are performed. This is necessary to not miss the
-            // goal when passing by.
-            if !ALLOW_DIAGONAL {
-                let perp_1 = direction.rotate_ccw(2);
-                let perp_2 = direction.rotate_cw(2);
-                if self.jump_straight(initial, 1, perp_1, goal).is_some()
-                    || self.jump_straight(initial, 1, perp_2, goal).is_some()
-                {
-                    return Some((initial, cost));
-                }
-            }
-
-            // See comment in pruned_neighborhood about cost calculation
-            cost += (direction.num() % 2) * (D - C) + C;
-        }
-    }
-
-    /// Updates the neighbours grid after changing the grid.
-    fn update_neighbours(&mut self, x: i32, y: i32, blocked: bool) {
-        let p = Point::new(x, y);
-        for i in 0..8 {
-            let neighbor = p.moore_neighbor(i);
-            if self.in_bounds(neighbor.x, neighbor.y) {
-                let ix = (i + 4) % 8;
-                let mut n_mask = self.neighbours.get_point(neighbor);
-                if blocked {
-                    n_mask &= !(1 << ix);
-                } else {
-                    n_mask |= 1 << ix;
-                }
-                self.neighbours.set_point(neighbor, n_mask);
-            }
-        }
-    }
-    fn jps_neighbours<F>(
-        &self,
-        parent: Option<&Point>,
-        node: &Point,
-        goal: &F,
-    ) -> SmallVec<[(Point, i32); N_SMALLVEC_SIZE]>
-    where
-        F: Fn(&Point) -> bool,
-    {
-        match parent {
-            Some(parent_node) => {
-                let mut succ = SmallVec::new();
-                let dir = parent_node.dir_obj(node);
-                for (n, c) in self.pruned_neighborhood(dir, node) {
-                    let dir = node.dir_obj(&n);
-                    // Jumps the neighbor, skipping over unnecessary nodes.
-                    if let Some((jumped_node, cost)) = self.jump(*node, c, dir, goal) {
-                        // If improved pruning is enabled, expand any diagonal unforced nodes
-                        if self.improved_pruning
-                            && CUT_CORNERS
-                            && dir.diagonal()
-                            && !goal(&jumped_node)
-                            && !self.is_forced(dir, &jumped_node)
-                        {
-                            // Recursively expand the unforced diagonal node
-                            let jump_points = self.jps_neighbours(parent, &jumped_node, goal);
-
-                            // Extend the successors with the neighbours of the unforced node, correcting the
-                            // cost to include the cost from parent_node to jumped_node
-                            succ.extend(jump_points.into_iter().map(|(p, c)| (p, c + cost)));
-                        } else {
-                            succ.push((jumped_node, cost));
-                        }
-                    }
-                }
-                succ
-            }
-            None => {
-                // For the starting node, just generate the full normal neighborhood without any pruning or jumping.
-                self.neighborhood_points_and_cost(node)
-            }
-        }
-    }
-    /// Retrieves the component id a given [Point] belongs to.
-    pub fn get_component(&self, point: &Point) -> usize {
-        self.components.find(self.get_ix_point(point))
-    }
-    /// Checks if start and goal are on the same component.
-    pub fn reachable(&self, start: &Point, goal: &Point) -> bool {
-        !self.unreachable(start, goal)
-    }
-
-    /// Checks if start and goal are not on the same component.
-    pub fn unreachable(&self, start: &Point, goal: &Point) -> bool {
-        if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
-            let start_ix = self.get_ix_point(start);
-            let goal_ix = self.get_ix_point(goal);
-            !self.components.equiv(start_ix, goal_ix)
-        } else {
-            true
-        }
-    }
-
-    /// Checks if any neighbour of the goal is on the same component as the start.
-    pub fn neighbours_reachable(&self, start: &Point, goal: &Point) -> bool {
-        if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
-            let start_ix = self.get_ix_point(start);
-            let neighborhood = self.neighborhood_points(goal);
-            neighborhood.iter().any(|p| {
-                self.in_bounds(p.x, p.y) && self.components.equiv(start_ix, self.get_ix_point(p))
-            })
-        } else {
-            true
-        }
-    }
-
-    /// Checks if every neighbour of the goal is on a different component as the start.
-    pub fn neighbours_unreachable(&self, start: &Point, goal: &Point) -> bool {
-        if self.in_bounds(start.x, start.y) && self.in_bounds(goal.x, goal.y) {
-            let start_ix = self.get_ix_point(start);
-            let neighborhood = self.neighborhood_points(goal);
-            neighborhood.iter().all(|p| {
-                !self.in_bounds(p.x, p.y) || !self.components.equiv(start_ix, self.get_ix_point(p))
-            })
-        } else {
-            true
-        }
-    }
     /// Computes a path from start to goal using JPS. If approximate is [true], then it will
     /// path to one of the neighbours of the goal, which is useful if the goal itself is
     /// blocked. If diagonals are allowed, the heuristic used computes the path cost
@@ -428,237 +106,79 @@ impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> Pathfinder<ALLOW_DIAGO
     /// called Weighted A*. In pathfinding language, a factor greater than
     /// 1.0 will make the heuristic [inadmissible](https://en.wikipedia.org/wiki/Admissible_heuristic), a requirement for solution optimality. By default,
     /// the [heuristic_factor](Self::heuristic_factor) is 1.0 which gives optimal solutions.
-    pub fn get_path_single_goal(&self, start: Point, goal: Point) -> Option<Vec<Point>> {
-        self.get_waypoints_single_goal(start, goal)
-            .map(waypoints_to_path)
+    pub fn get_path_single_goal(&mut self, start: Point, goal: Point) -> Option<Vec<Point>> {
+        self.solver
+            .get_path_single_goal(&mut self.grid, start, goal)
     }
     pub fn get_path_single_goal_approximate(
-        &self,
+        &mut self,
         start: Point,
         goal: Point,
     ) -> Option<Vec<Point>> {
-        self.get_waypoints_single_goal_approximate(start, goal)
-            .map(waypoints_to_path)
+        self.solver
+            .get_path_single_goal_approximate(&mut self.grid, start, goal)
     }
 
     /// Computes a path from the start to one of the given goals and returns the selected goal in addition to the found path. Otherwise behaves similar to [get_path_single_goal](Self::get_path_single_goal).
     pub fn get_path_multiple_goals(
-        &self,
+        &mut self,
         start: Point,
         goals: Vec<&Point>,
     ) -> Option<(Point, Vec<Point>)> {
-        self.get_waypoints_multiple_goals(start, goals)
-            .map(|(x, y)| (x, waypoints_to_path(y)))
+        self.solver
+            .get_path_multiple_goals(&mut self.grid, start, goals)
     }
     /// The raw waypoints (jump points) from which [get_path_multiple_goals](Self::get_path_multiple_goals) makes a path.
     pub fn get_waypoints_multiple_goals(
-        &self,
+        &mut self,
         start: Point,
         goals: Vec<&Point>,
     ) -> Option<(Point, Vec<Point>)> {
-        if goals.is_empty() {
-            return None;
-        }
-        let mut ct = self.context.lock().unwrap();
-        let result = ct.astar_jps(
-            &start,
-            |parent, node| {
-                if GRAPH_PRUNING {
-                    self.jps_neighbours(*parent, node, &|node_pos| goals.contains(&node_pos))
-                } else {
-                    self.neighborhood_points_and_cost(node)
-                }
-            },
-            |point| {
-                (goals
-                    .iter()
-                    .map(|x| self.heuristic(point, x))
-                    .min()
-                    .unwrap() as f32
-                    * self.heuristic_factor) as i32
-            },
-            |point| goals.contains(&point),
-        );
-        result.map(|(v, _c)| (*v.last().unwrap(), v))
+        self.solver
+            .get_path_multiple_goals(&mut self.grid, start, goals)
     }
     /// The raw waypoints (jump points) from which [get_path_single_goal](Self::get_path_single_goal) makes a path.
-    pub fn get_waypoints_single_goal(&self, start: Point, goal: Point) -> Option<Vec<Point>> {
-        // Check if start and goal are on the same connected component.
-        if self.unreachable(&start, &goal) {
-            return None;
-        }
-        // The goal is reachable from the start, compute a path
-        let mut ct = self.context.lock().unwrap();
-        ct.astar_jps(
-            &start,
-            |parent, node| {
-                if GRAPH_PRUNING {
-                    self.jps_neighbours(*parent, node, &|node_pos| *node_pos == goal)
-                } else {
-                    self.neighborhood_points_and_cost(node)
-                }
-            },
-            |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
-            |point| *point == goal,
-        )
-        .map(|(v, _c)| v)
+    pub fn get_waypoints_single_goal(&mut self, start: Point, goal: Point) -> Option<Vec<Point>> {
+        self.solver
+            .get_waypoints_single_goal(&mut self.grid, start, goal)
     }
     /// The raw waypoints (jump points) from which [get_path_single_goal](Self::get_path_single_goal) makes a path.
     pub fn get_waypoints_single_goal_approximate(
-        &self,
+        &mut self,
         start: Point,
         goal: Point,
     ) -> Option<Vec<Point>> {
-        // Check if start and one of the goal neighbours are on the same connected component.
-        if self.neighbours_unreachable(&start, &goal) {
-            // No neigbhours of the goal are reachable from the start
-            return None;
-        }
-        // A neighbour of the goal can be reached, compute a path
-        let mut ct = self.context.lock().unwrap();
-        ct.astar_jps(
-            &start,
-            |parent, node| {
-                if GRAPH_PRUNING {
-                    self.jps_neighbours(*parent, node, &|node_pos| {
-                        self.heuristic(node_pos, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 }
-                    })
-                } else {
-                    self.neighborhood_points_and_cost(node)
-                }
-            },
-            |point| (self.heuristic(point, &goal) as f32 * self.heuristic_factor) as i32,
-            |point| self.heuristic(point, &goal) <= if EQUAL_EDGE_COST { 1 } else { 99 },
-        )
-        .map(|(v, _c)| v)
+        self.solver
+            .get_waypoints_single_goal_approximate(&mut self.grid, start, goal)
     }
     /// Regenerates the components if they are marked as dirty.
     pub fn update(&mut self) {
-        if self.components_dirty {
-            // The components are dirty, regenerate them
-            self.generate_components();
-        }
-    }
-
-    pub fn update_all_neighbours(&mut self) {
-        for x in 0..self.width() as i32 {
-            for y in 0..self.height() as i32 {
-                self.update_neighbours(x, y, self.get(x, y));
-            }
-        }
-    }
-    pub fn set_jumppoints(&mut self, point: Point) {
-        let value = self.forced_mask(&point);
-        self.jump_point.set_point(point, value);
-    }
-    pub fn fix_jumppoints(&mut self, point: Point) {
-        self.set_jumppoints(point);
-        for p in self.neighborhood_points(&point) {
-            if self.point_in_bounds(p) {
-                self.set_jumppoints(p);
-            }
-        }
-    }
-
-    /// Performs the full jump point precomputation
-    pub fn set_all_jumppoints(&mut self) {
-        for x in 0..self.width() {
-            for y in 0..self.height() {
-                self.set_jumppoints(Point::new(x as i32, y as i32));
-            }
-        }
+        self.grid.update();
     }
 
     pub fn initialize(&mut self) {
-        // Emulates 'placing' of blocked tile around map border to correctly initialize neighbours
-        // and make behaviour of a map bordered by tiles the same as a borderless map.
-        for i in -1..=(self.width() as i32) {
-            self.update_neighbours(i, -1, true);
-            self.update_neighbours(i, self.height() as i32, true);
-        }
-        for j in -1..=(self.height() as i32) {
-            self.update_neighbours(-1, j, true);
-            self.update_neighbours(self.width() as i32, j, true);
-        }
-        self.update_all_neighbours();
-        self.set_all_jumppoints();
+        self.solver.initialize(&self.grid);
     }
 
-    /// Generates a new [UnionFind] structure and links up grid neighbours to the same components.
     pub fn generate_components(&mut self) {
-        let w = self.grid.width;
-        let h = self.grid.height;
-        self.components = UnionFind::new(w * h);
-        self.components_dirty = false;
-        for x in 0..w as i32 {
-            for y in 0..h as i32 {
-                if !self.grid.get(x, y) {
-                    let point = Point::new(x, y);
-                    let parent_ix = self.grid.get_ix_point(&point);
-
-                    if ALLOW_DIAGONAL {
-                        vec![
-                            Point::new(point.x, point.y + 1),
-                            Point::new(point.x, point.y - 1),
-                            Point::new(point.x + 1, point.y),
-                            Point::new(point.x + 1, point.y - 1),
-                            Point::new(point.x + 1, point.y),
-                            Point::new(point.x + 1, point.y + 1),
-                        ]
-                    } else {
-                        vec![
-                            Point::new(point.x, point.y + 1),
-                            Point::new(point.x, point.y - 1),
-                            Point::new(point.x + 1, point.y),
-                        ]
-                    }
-                    .into_iter()
-                    .filter(|p| self.can_move_to(*p, point))
-                    .collect::<Vec<_>>()
-                    .iter()
-                    .for_each(|p| {
-                        let ix = self.grid.get_ix_point(&p);
-                        self.components.union(parent_ix, ix);
-                    });
-                }
-            }
-        }
+        self.grid.generate_components();
     }
 }
-impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> fmt::Display for Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS> {
+impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> fmt::Display
+    for Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS>
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "Grid:")?;
-        for y in 0..self.grid.height as i32 {
-            let values = (0..self.grid.width as i32)
-                .map(|x| self.grid.get(x, y) as i32)
-                .collect::<Vec<i32>>();
-            writeln!(f, "{:?}", values)?;
-        }
-        writeln!(f, "\nNeighbours:")?;
-        for y in 0..self.neighbours.height as i32 {
-            let values = (0..self.neighbours.width as i32)
-                .map(|x| self.neighbours.get(x, y) as i32)
-                .collect::<Vec<i32>>();
-            writeln!(f, "{:?}", values)?;
-        }
-        Ok(())
+        self.grid.fmt(f)
     }
 }
 
-impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> ValueGrid<bool> for Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS> {
+impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> ValueGrid<bool>
+    for Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS>
+{
     fn new(width: usize, height: usize, default_value: bool) -> Self {
-        let mut base_grid = Pathfinder {
-            grid: BoolGrid::new(width, height, default_value),
-            jump_point: SimpleValueGrid::new(width, height, 0b00000000),
-            neighbours: SimpleValueGrid::new(width, height, 0b11111111),
-            components: UnionFind::new(width * height),
-            components_dirty: false,
-            improved_pruning: true,
-            heuristic_factor: 1.0,
-            context: Arc::new(Mutex::new(SearchContext::new())),
-        };
-        base_grid.initialize();
-        base_grid
+        let grid = PathingGrid::new(width, height, default_value);
+        let solver = JPSSolver::new(&grid, true);
+        Pathfinder { grid, solver }
     }
     fn get(&self, x: i32, y: i32) -> bool {
         self.grid.get(x, y)
@@ -666,20 +186,8 @@ impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> ValueGrid<bool> for Pa
     /// Updates a position on the grid. Joins newly connected components and flags the components
     /// as dirty if components are (potentially) broken apart into multiple.
     fn set(&mut self, x: i32, y: i32, blocked: bool) {
-        let p = Point::new(x, y);
-        if self.grid.get(x, y) != blocked && blocked {
-            self.components_dirty = true;
-        } else {
-            let p_ix = self.grid.compute_ix(x, y);
-            for n in self.neighborhood_points(&p) {
-                if self.can_move_to(n, p) {
-                    self.components.union(p_ix, self.grid.get_ix_point(&n));
-                }
-            }
-        }
-        self.update_neighbours(p.x, p.y, blocked);
         self.grid.set(x, y, blocked);
-        self.fix_jumppoints(p);
+        self.solver.set(x, y, blocked, &self.grid);
     }
     fn width(&self) -> usize {
         self.grid.width()
