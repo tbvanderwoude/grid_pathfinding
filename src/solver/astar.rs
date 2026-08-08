@@ -19,9 +19,9 @@ impl AstarSolver {
 impl GridSolver for AstarSolver {
     type Successors = SmallVec<[(Point, i32); N_SMALLVEC_SIZE]>;
 
-    fn successors<const ALLOW_DIAGONAL: bool, F>(
+    fn successors<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool, F>(
         &self,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         _parent: Option<&Point>,
         node: &Point,
         _goal: &F,
@@ -33,9 +33,9 @@ impl GridSolver for AstarSolver {
     }
 
     /// Just the normal cost times a heuristic factor.
-    fn heuristic<const ALLOW_DIAGONAL: bool>(
+    fn heuristic<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &self,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         p1: &Point,
         p2: &Point,
     ) -> i32 {
@@ -47,7 +47,7 @@ impl GridSolver for AstarSolver {
 mod tests {
     use grid_util::{Rect, ValueGrid};
 
-    use crate::ALLOW_CORNER_CUTTING;
+    use crate::DEFAULT_CUT_CORNERS;
 
     use super::*;
 
@@ -97,7 +97,7 @@ mod tests {
     /// Asserts that the optimal 4 step solution is found.
     #[test]
     fn solve_simple_problem_diagonal() {
-        let expected = if ALLOW_CORNER_CUTTING { 4 } else { 5 };
+        let expected = if DEFAULT_CUT_CORNERS { 4 } else { 5 };
         let mut pathing_grid: PathingGrid<true> = PathingGrid::new(3, 3, false);
         pathing_grid.set(1, 1, true);
         pathing_grid.generate_components();
@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn test_multiple_goal_diagonal() {
-        let expected = if ALLOW_CORNER_CUTTING { 5 } else { 6 };
+        let expected = if DEFAULT_CUT_CORNERS { 5 } else { 6 };
         let mut pathing_grid: PathingGrid<true> = PathingGrid::new(5, 5, false);
         pathing_grid.set(1, 1, true);
         pathing_grid.generate_components();
@@ -166,7 +166,7 @@ mod tests {
     }
     #[test]
     fn test_complex_diagonal() {
-        let expected = if ALLOW_CORNER_CUTTING { 10 } else { 11 };
+        let expected = if DEFAULT_CUT_CORNERS { 10 } else { 11 };
         let mut pathing_grid: PathingGrid<true> = PathingGrid::new(10, 10, false);
         pathing_grid.set_rect(Rect::new(1, 1, 1, 1), true);
         pathing_grid.set_rect(Rect::new(5, 0, 1, 1), true);
@@ -204,7 +204,7 @@ mod tests {
         let path = solver.get_path_single_goal(&mut pathing_grid, start, goal);
         let path_diag = solver.get_path_single_goal(&mut pathing_grid_diag, start, goal);
         assert!(path.is_none());
-        if ALLOW_CORNER_CUTTING {
+        if DEFAULT_CUT_CORNERS {
             assert!(path_diag.is_some());
         } else {
             assert!(path_diag.is_none());

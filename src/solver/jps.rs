@@ -3,7 +3,7 @@ use grid_util::{Direction, Point, SimpleValueGrid, ValueGrid};
 use smallvec::SmallVec;
 
 use crate::{
-    pathing_grid::PathingGrid, solver::GridSolver, ALLOW_CORNER_CUTTING, C, D, N_SMALLVEC_SIZE,
+    pathing_grid::PathingGrid, solver::GridSolver, C, D, N_SMALLVEC_SIZE,
 };
 
 #[derive(Clone, Debug)]
@@ -16,9 +16,9 @@ pub struct JPSSolver {
 impl GridSolver for JPSSolver {
     type Successors = SmallVec<[(Point, i32); N_SMALLVEC_SIZE]>;
 
-    fn successors<const ALLOW_DIAGONAL: bool, F>(
+    fn successors<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool, F>(
         &self,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         parent: Option<&Point>,
         node: &Point,
         goal: &F,
@@ -30,13 +30,13 @@ impl GridSolver for JPSSolver {
             Some(parent_node) => {
                 let mut succ = SmallVec::new();
                 let dir = parent_node.dir_obj(node);
-                for (n, c) in self.pruned_neighborhood::<ALLOW_DIAGONAL>(dir, node) {
+                for (n, c) in self.pruned_neighborhood::<ALLOW_DIAGONAL, CUT_CORNERS>(dir, node) {
                     let dir = node.dir_obj(&n);
                     // Jumps the neighbor, skipping over unnecessary nodes.
                     if let Some((jumped_node, cost)) = self.jump(*node, c, dir, goal, grid) {
                         // If improved pruning is enabled, expand any diagonal unforced nodes
                         if self.improved_pruning
-                            && ALLOW_CORNER_CUTTING
+                            && CUT_CORNERS
                             && dir.diagonal()
                             && !goal(&jumped_node)
                             && !self.is_forced(dir, &jumped_node)
@@ -62,9 +62,9 @@ impl GridSolver for JPSSolver {
     }
 
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
-    fn heuristic<const ALLOW_DIAGONAL: bool>(
+    fn heuristic<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &self,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         p1: &Point,
         p2: &Point,
     ) -> i32 {
@@ -72,8 +72,8 @@ impl GridSolver for JPSSolver {
     }
 }
 impl JPSSolver {
-    pub fn new<const ALLOW_DIAGONAL: bool>(
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
+    pub fn new<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
+        grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         improved_pruning: bool,
     ) -> JPSSolver {
         let mut solver = JPSSolver {
@@ -119,18 +119,18 @@ impl JPSSolver {
             }
         }
     }
-    fn forced_mask(&self, node: &Point) -> u8 {
+    fn forced_mask<const CUT_CORNERS: bool>(&self, node: &Point) -> u8 {
         let mut forced_mask: u8 = 0;
         for dir_num in 0..8 {
             if dir_num % 2 == 1 {
                 // With no corner cutting, diagonal arrivals never have forced neighbours.
-                if ALLOW_CORNER_CUTTING
+                if CUT_CORNERS
                     && (!self.indexed_neighbor(node, 3 + dir_num)
                         || !self.indexed_neighbor(node, 5 + dir_num))
                 {
                     forced_mask |= 1 << dir_num;
                 }
-            } else if ALLOW_CORNER_CUTTING {
+            } else if CUT_CORNERS {
                 if !self.indexed_neighbor(node, 2 + dir_num)
                     || !self.indexed_neighbor(node, 6 + dir_num)
                 {
@@ -149,7 +149,7 @@ impl JPSSolver {
         forced_mask
     }
 
-    fn pruned_neighborhood<'a, const ALLOW_DIAGONAL: bool>(
+    fn pruned_neighborhood<'a, const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &self,
         dir: Direction,
         node: &'a Point,
@@ -164,7 +164,7 @@ impl JPSSolver {
             // Diagonal arrivals have three natural successors. Forced diagonal-arrival
             // successors exist only in the corner-cutting movement model.
             n_mask = 0b10000011_u8.rotate_left(dir_num as u32);
-            if ALLOW_CORNER_CUTTING {
+            if CUT_CORNERS {
                 if !self.indexed_neighbor(node, 3 + dir_num) {
                     n_mask |= 1 << ((dir_num + 2) % 8);
                 }
@@ -172,7 +172,7 @@ impl JPSSolver {
                     n_mask |= 1 << ((dir_num + 6) % 8);
                 }
             }
-        } else if ALLOW_CORNER_CUTTING {
+        } else if CUT_CORNERS {
             n_mask = 0b00000001 << dir_num;
             if !self.indexed_neighbor(node, 2 + dir_num) {
                 n_mask |= 1 << ((dir_num + 1) % 8);
@@ -205,13 +205,13 @@ impl JPSSolver {
     }
 
     /// Straight jump in a cardinal direction.
-    fn jump_straight<const ALLOW_DIAGONAL: bool, F>(
+    fn jump_straight<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool, F>(
         &self,
         mut initial: Point,
         mut cost: i32,
         direction: Direction,
         goal: &F,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
     ) -> Option<(Point, i32)>
     where
         F: Fn(&Point) -> bool,
@@ -233,13 +233,13 @@ impl JPSSolver {
     }
 
     /// Performs the jumping of node neighbours, skipping over unnecessary nodes until a goal or a forced node is found.
-    fn jump<const ALLOW_DIAGONAL: bool, F>(
+    fn jump<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool, F>(
         &self,
         mut initial: Point,
         mut cost: i32,
         direction: Direction,
         goal: &F,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
     ) -> Option<(Point, i32)>
     where
         F: Fn(&Point) -> bool,
@@ -284,48 +284,48 @@ impl JPSSolver {
         }
     }
 
-    pub fn set_jumppoints(&mut self, point: Point) {
-        let value = self.forced_mask(&point);
+    pub fn set_jumppoints<const CUT_CORNERS: bool>(&mut self, point: Point) {
+        let value = self.forced_mask::<CUT_CORNERS>(&point);
         self.jump_point.set_point(point, value);
     }
-    pub fn fix_jumppoints<const ALLOW_DIAGONAL: bool>(
+    pub fn fix_jumppoints<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &mut self,
         point: Point,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
     ) {
-        self.set_jumppoints(point);
+        self.set_jumppoints::<CUT_CORNERS>(point);
         for p in grid.neighborhood_points(&point) {
             if grid.point_in_bounds(p) {
-                self.set_jumppoints(p);
+                self.set_jumppoints::<CUT_CORNERS>(p);
             }
         }
     }
 
     /// Performs the full jump point precomputation
-    pub fn set_all_jumppoints(&mut self) {
+    pub fn set_all_jumppoints<const CUT_CORNERS: bool>(&mut self) {
         for x in 0..self.width() {
             for y in 0..self.height() {
-                self.set_jumppoints(Point::new(x as i32, y as i32));
+                self.set_jumppoints::<CUT_CORNERS>(Point::new(x as i32, y as i32));
             }
         }
     }
 
     /// Updates the neighbours and jumppoints
-    fn set<const ALLOW_DIAGONAL: bool>(
+    fn set<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &mut self,
         x: i32,
         y: i32,
         blocked: bool,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
     ) {
         let p = Point::new(x, y);
         self.update_neighbours(p.x, p.y, blocked);
         self.fix_jumppoints(p, grid);
     }
 
-    pub fn update_all_neighbours<const ALLOW_DIAGONAL: bool>(
+    pub fn update_all_neighbours<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &mut self,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
     ) {
         for x in 0..self.width() as i32 {
             for y in 0..self.height() as i32 {
@@ -333,7 +333,10 @@ impl JPSSolver {
             }
         }
     }
-    pub fn initialize<const ALLOW_DIAGONAL: bool>(&mut self, grid: &PathingGrid<ALLOW_DIAGONAL>) {
+    pub fn initialize<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
+        &mut self,
+        grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
+    ) {
         // Emulates 'placing' of blocked tile around map border to correctly initialize neighbours
         // and make behaviour of a map bordered by tiles the same as a borderless map.
         for i in -1..=(self.width() as i32) {
@@ -345,7 +348,7 @@ impl JPSSolver {
             self.update_neighbours(self.width() as i32, j, true);
         }
         self.update_all_neighbours(grid);
-        self.set_all_jumppoints();
+        self.set_all_jumppoints::<CUT_CORNERS>();
     }
 }
 

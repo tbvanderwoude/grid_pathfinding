@@ -9,15 +9,15 @@ use smallvec::SmallVec;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug)]
-pub struct PathingGrid<const D: bool> {
+pub struct PathingGrid<const D: bool, const CUT_CORNERS: bool = DEFAULT_CUT_CORNERS> {
     pub grid: BoolGrid,
     pub components: UnionFind<usize>,
     pub components_dirty: bool,
     pub(crate) context: Arc<Mutex<DefaultSearchContext<Point, i32>>>,
 }
 
-impl<const D: bool> Default for PathingGrid<D> {
-    fn default() -> PathingGrid<D> {
+impl<const D: bool, const CUT_CORNERS: bool> Default for PathingGrid<D, CUT_CORNERS> {
+    fn default() -> PathingGrid<D, CUT_CORNERS> {
         let grid = PathingGrid {
             grid: BoolGrid::default(),
             components: UnionFind::new(0),
@@ -28,7 +28,7 @@ impl<const D: bool> Default for PathingGrid<D> {
     }
 }
 
-impl<const ALLOW_DIAGONAL: bool> PathingGrid<ALLOW_DIAGONAL> {
+impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS> {
     pub fn neighborhood_points(&self, point: &Point) -> SmallVec<[Point; 8]> {
         if ALLOW_DIAGONAL {
             point.moore_neighborhood_smallvec()
@@ -49,7 +49,7 @@ impl<const ALLOW_DIAGONAL: bool> PathingGrid<ALLOW_DIAGONAL> {
     }
 
     pub fn can_move_to(&self, pos: Point, start: Point) -> bool {
-        if ALLOW_CORNER_CUTTING {
+        if CUT_CORNERS {
             self.can_move_to_simple(pos)
         } else {
             debug_assert!((start.x - pos.x).abs() <= 1 && (start.y - pos.y).abs() <= 1);
@@ -160,7 +160,7 @@ impl<const ALLOW_DIAGONAL: bool> PathingGrid<ALLOW_DIAGONAL> {
         }
     }
 }
-impl<const D: bool> fmt::Display for PathingGrid<D> {
+impl<const D: bool, const CUT_CORNERS: bool> fmt::Display for PathingGrid<D, CUT_CORNERS> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Grid:")?;
         for y in 0..self.grid.height as i32 {
@@ -173,7 +173,7 @@ impl<const D: bool> fmt::Display for PathingGrid<D> {
     }
 }
 
-impl<const D: bool> ValueGrid<bool> for PathingGrid<D> {
+impl<const D: bool, const CUT_CORNERS: bool> ValueGrid<bool> for PathingGrid<D, CUT_CORNERS> {
     fn new(width: usize, height: usize, default_value: bool) -> Self {
         let base_grid = PathingGrid {
             grid: BoolGrid::new(width, height, default_value),
@@ -291,7 +291,7 @@ mod tests {
         let start = Point::new(0, 0);
         let end = Point::new(1, 1);
         assert!(pathing_grid.unreachable(&start, &end));
-        if ALLOW_CORNER_CUTTING {
+        if DEFAULT_CUT_CORNERS {
             assert!(pathing_grid_diag.reachable(&start, &end));
         } else {
             assert!(pathing_grid_diag.unreachable(&start, &end));

@@ -9,9 +9,9 @@ pub struct DijkstraSolver;
 impl GridSolver for DijkstraSolver {
     type Successors = SmallVec<[(Point, i32); N_SMALLVEC_SIZE]>;
 
-    fn successors<const ALLOW_DIAGONAL: bool, F>(
+    fn successors<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool, F>(
         &self,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         _: Option<&Point>,
         node: &Point,
         _: &F,
@@ -23,9 +23,9 @@ impl GridSolver for DijkstraSolver {
     }
 
     /// Just the cost times a heuristic factor.
-    fn heuristic<const ALLOW_DIAGONAL: bool>(
+    fn heuristic<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &self,
-        _: &PathingGrid<ALLOW_DIAGONAL>,
+        _: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         _: &Point,
         _: &Point,
     ) -> i32 {

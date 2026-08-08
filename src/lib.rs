@@ -23,7 +23,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::astar_jps::DefaultSearchContext;
 
-pub const ALLOW_CORNER_CUTTING: bool = false;
+pub const DEFAULT_CUT_CORNERS: bool = false;
 const EQUAL_EDGE_COST: bool = false;
 const GRAPH_PRUNING: bool = true;
 const N_SMALLVEC_SIZE: usize = 8;
@@ -73,7 +73,7 @@ pub fn waypoints_to_path(waypoints: Vec<Point>) -> Vec<Point> {
 /// empty ([false]). It also records neighbours in [u8] format for fast lookups during search.
 /// Implements [Grid] by building on [BoolGrid].
 #[derive(Clone, Debug)]
-pub struct Pathfinder<const ALLOW_DIAGONAL: bool> {
+pub struct Pathfinder<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool = DEFAULT_CUT_CORNERS> {
     pub grid: BoolGrid,
     pub neighbours: SimpleValueGrid<u8>,
     pub jump_point: SimpleValueGrid<u8>,
@@ -84,8 +84,8 @@ pub struct Pathfinder<const ALLOW_DIAGONAL: bool> {
     context: Arc<Mutex<DefaultSearchContext<Point, i32>>>,
 }
 
-impl<const ALLOW_DIAGONAL: bool> Default for Pathfinder<ALLOW_DIAGONAL> {
-    fn default() -> Pathfinder<ALLOW_DIAGONAL> {
+impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> Default for Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS> {
+    fn default() -> Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS> {
         let mut grid = Pathfinder {
             grid: BoolGrid::default(),
             neighbours: SimpleValueGrid::default(),
@@ -100,7 +100,7 @@ impl<const ALLOW_DIAGONAL: bool> Default for Pathfinder<ALLOW_DIAGONAL> {
         grid
     }
 }
-impl<const ALLOW_DIAGONAL: bool> Pathfinder<ALLOW_DIAGONAL> {
+impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS> {
     fn neighborhood_points(&self, point: &Point) -> SmallVec<[Point; 8]> {
         if ALLOW_DIAGONAL {
             point.moore_neighborhood_smallvec()
@@ -133,7 +133,7 @@ impl<const ALLOW_DIAGONAL: bool> Pathfinder<ALLOW_DIAGONAL> {
         }
     }
     fn can_move_to(&self, pos: Point, start: Point) -> bool {
-        if ALLOW_CORNER_CUTTING {
+        if CUT_CORNERS {
             self.can_move_to_simple(pos)
         } else {
             debug_assert!((start.x - pos.x).abs() <= 1 && (start.y - pos.y).abs() <= 1);
@@ -161,13 +161,13 @@ impl<const ALLOW_DIAGONAL: bool> Pathfinder<ALLOW_DIAGONAL> {
         let mut forced_mask: u8 = 0;
         for dir_num in 0..8 {
             if dir_num % 2 == 1 {
-                if ALLOW_CORNER_CUTTING
+                if CUT_CORNERS
                     && (!self.indexed_neighbor(node, 3 + dir_num)
                         || !self.indexed_neighbor(node, 5 + dir_num))
                 {
                     forced_mask |= 1 << dir_num;
                 }
-            } else if ALLOW_CORNER_CUTTING {
+            } else if CUT_CORNERS {
                 if !self.indexed_neighbor(node, 2 + dir_num)
                     || !self.indexed_neighbor(node, 6 + dir_num)
                 {
@@ -197,7 +197,7 @@ impl<const ALLOW_DIAGONAL: bool> Pathfinder<ALLOW_DIAGONAL> {
             n_mask = 0b01000101_u8.rotate_left(dir_num as u32);
         } else if dir.diagonal() {
             n_mask = 0b10000011_u8.rotate_left(dir_num as u32);
-            if ALLOW_CORNER_CUTTING {
+            if CUT_CORNERS {
                 if !self.indexed_neighbor(node, 3 + dir_num) {
                     n_mask |= 1 << ((dir_num + 2) % 8);
                 }
@@ -205,7 +205,7 @@ impl<const ALLOW_DIAGONAL: bool> Pathfinder<ALLOW_DIAGONAL> {
                     n_mask |= 1 << ((dir_num + 6) % 8);
                 }
             }
-        } else if ALLOW_CORNER_CUTTING {
+        } else if CUT_CORNERS {
             n_mask = 0b00000001 << dir_num;
             if !self.indexed_neighbor(node, 2 + dir_num) {
                 n_mask |= 1 << ((dir_num + 1) % 8);
@@ -348,7 +348,7 @@ impl<const ALLOW_DIAGONAL: bool> Pathfinder<ALLOW_DIAGONAL> {
                     if let Some((jumped_node, cost)) = self.jump(*node, c, dir, goal) {
                         // If improved pruning is enabled, expand any diagonal unforced nodes
                         if self.improved_pruning
-                            && ALLOW_CORNER_CUTTING
+                            && CUT_CORNERS
                             && dir.diagonal()
                             && !goal(&jumped_node)
                             && !self.is_forced(dir, &jumped_node)
@@ -624,7 +624,7 @@ impl<const ALLOW_DIAGONAL: bool> Pathfinder<ALLOW_DIAGONAL> {
         }
     }
 }
-impl<const ALLOW_DIAGONAL: bool> fmt::Display for Pathfinder<ALLOW_DIAGONAL> {
+impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> fmt::Display for Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Grid:")?;
         for y in 0..self.grid.height as i32 {
@@ -644,7 +644,7 @@ impl<const ALLOW_DIAGONAL: bool> fmt::Display for Pathfinder<ALLOW_DIAGONAL> {
     }
 }
 
-impl<const ALLOW_DIAGONAL: bool> ValueGrid<bool> for Pathfinder<ALLOW_DIAGONAL> {
+impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> ValueGrid<bool> for Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS> {
     fn new(width: usize, height: usize, default_value: bool) -> Self {
         let mut base_grid = Pathfinder {
             grid: BoolGrid::new(width, height, default_value),

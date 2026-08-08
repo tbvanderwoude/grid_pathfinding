@@ -13,17 +13,17 @@ pub fn convert_cost_to_unit_cost_float(cost: i32) -> f64 {
 pub trait GridSolver {
     type Successors: IntoIterator<Item = (Point, i32)>;
 
-    fn heuristic<const ALLOW_DIAGONAL: bool>(
+    fn heuristic<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &self,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         p1: &Point,
         p2: &Point,
     ) -> i32;
 
     /// Uses C as cost for cardinal (straight) moves and D for diagonal moves.
-    fn cost<const ALLOW_DIAGONAL: bool>(
+    fn cost<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &self,
-        _grid: &PathingGrid<ALLOW_DIAGONAL>,
+        _grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         p1: &Point,
         p2: &Point,
     ) -> i32 {
@@ -39,9 +39,9 @@ pub trait GridSolver {
         }
     }
 
-    fn successors<const ALLOW_DIAGONAL: bool, F>(
+    fn successors<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool, F>(
         &self,
-        grid: &PathingGrid<ALLOW_DIAGONAL>,
+        grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         parent: Option<&Point>,
         node: &Point,
         goal: &F,
@@ -49,10 +49,10 @@ pub trait GridSolver {
     where
         F: Fn(&Point) -> bool;
 
-    fn get_path_cost<const ALLOW_DIAGONAL: bool>(
+    fn get_path_cost<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &self,
         path: &Vec<Point>,
-        pathing_grid: &PathingGrid<ALLOW_DIAGONAL>,
+        pathing_grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
     ) -> i32 {
         let mut v = path[0];
         let n = path.len();
@@ -65,25 +65,25 @@ pub trait GridSolver {
         }
         total_cost_int
     }
-    fn get_path_cost_float<const ALLOW_DIAGONAL: bool>(
+    fn get_path_cost_float<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &self,
         path: &Vec<Point>,
-        pathing_grid: &PathingGrid<ALLOW_DIAGONAL>,
+        pathing_grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
     ) -> f64 {
         convert_cost_to_unit_cost_float(self.get_path_cost(path, pathing_grid))
     }
-    fn get_path_single_goal<const ALLOW_DIAGONAL: bool>(
+    fn get_path_single_goal<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &self,
-        grid: &mut PathingGrid<ALLOW_DIAGONAL>,
+        grid: &mut PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         start: Point,
         goal: Point,
     ) -> Option<Vec<Point>> {
         self.get_waypoints_single_goal(grid, start, goal)
             .map(waypoints_to_path)
     }
-    fn get_path_single_goal_approximate<const ALLOW_DIAGONAL: bool>(
+    fn get_path_single_goal_approximate<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &self,
-        grid: &mut PathingGrid<ALLOW_DIAGONAL>,
+        grid: &mut PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         start: Point,
         goal: Point,
     ) -> Option<Vec<Point>> {
@@ -91,9 +91,9 @@ pub trait GridSolver {
             .map(waypoints_to_path)
     }
     /// The raw waypoints (jump points) from which [get_path_single_goal](Self::get_path_single_goal) makes a path.
-    fn get_waypoints_single_goal<const ALLOW_DIAGONAL: bool>(
+    fn get_waypoints_single_goal<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &self,
-        grid: &mut PathingGrid<ALLOW_DIAGONAL>,
+        grid: &mut PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         start: Point,
         goal: Point,
     ) -> Option<Vec<Point>> {
@@ -113,9 +113,9 @@ pub trait GridSolver {
     }
 
     /// The raw waypoints (jump points) from which [get_path_single_goal](Self::get_path_single_goal) makes a path.
-    fn get_waypoints_single_goal_approximate<const ALLOW_DIAGONAL: bool>(
+    fn get_waypoints_single_goal_approximate<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &self,
-        grid: &mut PathingGrid<ALLOW_DIAGONAL>,
+        grid: &mut PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         start: Point,
         goal: Point,
     ) -> Option<Vec<Point>> {
@@ -139,9 +139,9 @@ pub trait GridSolver {
         .map(|(v, _c)| v)
     }
     /// Computes a path from the start to one of the given goals and returns the selected goal in addition to the found path. Otherwise behaves similar to [get_path_single_goal](Self::get_path_single_goal).
-    fn get_path_multiple_goals<const ALLOW_DIAGONAL: bool>(
+    fn get_path_multiple_goals<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &self,
-        grid: &mut PathingGrid<ALLOW_DIAGONAL>,
+        grid: &mut PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         start: Point,
         goals: Vec<&Point>,
     ) -> Option<(Point, Vec<Point>)> {
@@ -149,9 +149,9 @@ pub trait GridSolver {
             .map(|(x, y)| (x, waypoints_to_path(y)))
     }
     /// The raw waypoints (jump points) from which [get_path_multiple_goals](Self::get_path_multiple_goals) makes a path.
-    fn get_waypoints_multiple_goals<const ALLOW_DIAGONAL: bool>(
+    fn get_waypoints_multiple_goals<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &self,
-        grid: &mut PathingGrid<ALLOW_DIAGONAL>,
+        grid: &mut PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
         start: Point,
         goals: Vec<&Point>,
     ) -> Option<(Point, Vec<Point>)> {

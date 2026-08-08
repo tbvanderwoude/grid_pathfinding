@@ -3,7 +3,7 @@
 use grid_pathfinding::{
     pathing_grid::PathingGrid,
     solver::{astar::AstarSolver, jps::JPSSolver, GridSolver},
-    ALLOW_CORNER_CUTTING,
+    DEFAULT_CUT_CORNERS,
 };
 use grid_util::*;
 use rand::prelude::*;
@@ -120,7 +120,7 @@ fn distance_fuzzer<const ALLOW_DIAGONAL: bool>() {
                     let delta_dist = (jps_cost - astar_cost).abs() / astar_cost;
                     if delta_dist >= tolerance {
                         println!("Astar distance: {astar_cost:4}; JPS distance: {jps_cost:4}");
-                        println!("diagonal: {ALLOW_DIAGONAL}; improved_pruning: {improved_pruning}; corner_cutting: {ALLOW_CORNER_CUTTING}");
+                        println!("diagonal: {ALLOW_DIAGONAL}; improved_pruning: {improved_pruning}; corner_cutting: {DEFAULT_CUT_CORNERS}");
 
                         let mut problem_start: Point = start;
                         for (idx, &p) in jps_path.iter().enumerate().rev() {

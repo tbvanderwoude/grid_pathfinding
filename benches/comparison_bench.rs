@@ -106,5 +106,5 @@ fn dao_bench_dijkstra<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, dao_bench<true>, dao_bench_jps<true>,);
+criterion_group!(benches, dao_bench<true>, dao_bench_jps<true>);
 criterion_main!(benches);
