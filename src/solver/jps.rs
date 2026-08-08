@@ -3,7 +3,7 @@ use grid_util::{Direction, Point, SimpleValueGrid, ValueGrid};
 use smallvec::SmallVec;
 
 use crate::{
-    pathing_grid::PathingGrid, solver::GridSolver, C, D, N_SMALLVEC_SIZE,
+    pathing_grid::PathingGrid, solver::GridSolver, C, D, DEFAULT_IMPROVED_PRUNING, N_SMALLVEC_SIZE,
 };
 
 #[derive(Clone, Debug)]
@@ -11,6 +11,16 @@ pub struct JPSSolver {
     pub jump_point: SimpleValueGrid<u8>,
     pub neighbours: SimpleValueGrid<u8>,
     pub improved_pruning: bool,
+}
+
+impl Default for JPSSolver {
+    fn default() -> Self {
+        Self {
+            jump_point: Default::default(),
+            neighbours: Default::default(),
+            improved_pruning: DEFAULT_IMPROVED_PRUNING,
+        }
+    }
 }
 
 impl GridSolver for JPSSolver {
@@ -311,7 +321,7 @@ impl JPSSolver {
     }
 
     /// Updates the neighbours and jumppoints
-    fn set<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
+    pub fn set<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
         &mut self,
         x: i32,
         y: i32,
