@@ -6,6 +6,23 @@ use crate::{
     pathing_grid::PathingGrid, solver::GridSolver, C, D, DEFAULT_IMPROVED_PRUNING, N_SMALLVEC_SIZE,
 };
 
+
+#[inline]
+fn arrival_direction(parent: &Point, node: &Point) -> Direction {
+    let dx = node.x - parent.x;
+    let dy = node.y - parent.y;
+
+    debug_assert!(dx != 0 || dy != 0);
+
+    if dx.abs() > dy.abs() {
+        Point::new(node.x - dx.signum(), node.y).dir_obj(node)
+    } else if dy.abs() > dx.abs() {
+        Point::new(node.x, node.y - dy.signum()).dir_obj(node)
+    } else {
+        parent.dir_obj(node)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct JPSSolver {
     pub jump_point: SimpleValueGrid<u8>,
@@ -39,20 +56,24 @@ impl GridSolver for JPSSolver {
         match parent {
             Some(parent_node) => {
                 let mut succ = SmallVec::new();
-                let dir = parent_node.dir_obj(node);
+                let dir = if self.improved_pruning && ALLOW_DIAGONAL {
+                    arrival_direction(parent_node, node)
+                } else {
+                    parent_node.dir_obj(node)
+                };
                 for (n, c) in self.pruned_neighborhood::<ALLOW_DIAGONAL, CUT_CORNERS>(dir, node) {
                     let dir = node.dir_obj(&n);
                     // Jumps the neighbor, skipping over unnecessary nodes.
                     if let Some((jumped_node, cost)) = self.jump(*node, c, dir, goal, grid) {
                         // If improved pruning is enabled, expand any diagonal unforced nodes
                         if self.improved_pruning
-                            && CUT_CORNERS
                             && dir.diagonal()
                             && !goal(&jumped_node)
                             && !self.is_forced(dir, &jumped_node)
                         {
                             // Recursively expand the unforced diagonal node
-                            let jump_points = self.successors(grid, parent, &jumped_node, goal);
+                            let jump_points =
+                                self.successors(grid, Some(node), &jumped_node, goal);
 
                             // Extend the successors with the neighbours of the unforced node, correcting the
                             // cost to include the cost from parent_node to jumped_node
