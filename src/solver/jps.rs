@@ -180,7 +180,7 @@ impl JPSSolver {
             // (dir_num % 2) * (D-C) + C)
             // is an optimized version without a conditional of
             // if dir.diagonal() {D} else {C}
-            .map(move |d| (node.moore_neighbor(d), (dir_num % 2) * (D - C) + C))
+            .map(move |d| (node.moore_neighbor(d), (d % 2) * (D - C) + C))
     }
 
     /// Straight jump in a cardinal direction.
