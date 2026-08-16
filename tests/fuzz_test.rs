@@ -9,12 +9,12 @@ use grid_util::*;
 use rand::prelude::*;
 use smallvec::{smallvec, SmallVec};
 
-fn random_grid<const ALLOW_DIAGONAL: bool>(
+fn random_grid<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
     w: usize,
     h: usize,
     rng: &mut StdRng,
-) -> PathingGrid<ALLOW_DIAGONAL> {
-    let mut pathing_grid: PathingGrid<ALLOW_DIAGONAL> = PathingGrid::new(w, h, false);
+) -> PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS> {
+    let mut pathing_grid: PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS> = PathingGrid::new(w, h, false);
     for x in 0..pathing_grid.width() as i32 {
         for y in 0..pathing_grid.height() as i32 {
             pathing_grid.set(x, y, rng.random_bool(0.4))
@@ -24,8 +24,8 @@ fn random_grid<const ALLOW_DIAGONAL: bool>(
     pathing_grid
 }
 
-fn visualize_grid<const ALLOW_DIAGONAL: bool>(
-    grid: &PathingGrid<ALLOW_DIAGONAL>,
+fn visualize_grid<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
+    grid: &PathingGrid<ALLOW_DIAGONAL,CUT_CORNERS>,
     start: &Point,
     end: &Point,
 ) {
@@ -47,7 +47,7 @@ fn visualize_grid<const ALLOW_DIAGONAL: bool>(
     }
 }
 
-fn reachable_fuzzer<const ALLOW_DIAGONAL: bool>() {
+fn reachable_fuzzer<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>() {
     const N: usize = 10;
     const N_GRIDS: usize = 10000;
     let mut rng = StdRng::seed_from_u64(0);
@@ -57,7 +57,7 @@ fn reachable_fuzzer<const ALLOW_DIAGONAL: bool>() {
         smallvec![false]
     };
     for improved_pruning in arr {
-        let mut random_grids: Vec<PathingGrid<ALLOW_DIAGONAL>> = Vec::new();
+        let mut random_grids: Vec<PathingGrid<ALLOW_DIAGONAL,CUT_CORNERS>> = Vec::new();
         for _ in 0..N_GRIDS {
             random_grids.push(random_grid(N, N, &mut rng))
         }
@@ -80,7 +80,7 @@ fn reachable_fuzzer<const ALLOW_DIAGONAL: bool>() {
     }
 }
 
-fn distance_fuzzer<const ALLOW_DIAGONAL: bool>() {
+fn distance_fuzzer<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>() {
     const N: usize = 10;
     const N_GRIDS: usize = 10000;
     let tolerance = 0.001;
@@ -93,7 +93,7 @@ fn distance_fuzzer<const ALLOW_DIAGONAL: bool>() {
         smallvec![false]
     };
     for improved_pruning in arr {
-        let mut random_grids: Vec<PathingGrid<ALLOW_DIAGONAL>> = Vec::new();
+        let mut random_grids: Vec<PathingGrid<ALLOW_DIAGONAL,CUT_CORNERS>> = Vec::new();
         for _ in 0..N_GRIDS {
             random_grids.push(random_grid(N, N, &mut rng))
         }
@@ -160,20 +160,28 @@ fn distance_fuzzer<const ALLOW_DIAGONAL: bool>() {
 
 #[test]
 fn fuzz_reachable() {
-    reachable_fuzzer::<false>()
+    reachable_fuzzer::<false, false>()
 }
 
 #[test]
 fn fuzz_reachable_diagonal() {
-    reachable_fuzzer::<true>()
+    reachable_fuzzer::<true,false>()
 }
-
+#[test]
+fn fuzz_reachable_diagonal_cc() {
+    reachable_fuzzer::<true,true>()
+}
 #[test]
 fn fuzz_distance() {
-    distance_fuzzer::<false>()
+    distance_fuzzer::<false, false>()
 }
 
 #[test]
 fn fuzz_distance_diagonal() {
-    distance_fuzzer::<true>()
+    distance_fuzzer::<true, false>()
+}
+
+#[test]
+fn fuzz_distance_diagonal_cc() {
+    distance_fuzzer::<true, true>()
 }
