@@ -6,7 +6,6 @@ use crate::{
     pathing_grid::PathingGrid, solver::GridSolver, C, D, DEFAULT_IMPROVED_PRUNING, N_SMALLVEC_SIZE,
 };
 
-
 #[inline]
 fn arrival_direction(parent: &Point, node: &Point) -> Direction {
     let dx = node.x - parent.x;
@@ -72,8 +71,7 @@ impl GridSolver for JPSSolver {
                             && !self.is_forced(dir, &jumped_node)
                         {
                             // Recursively expand the unforced diagonal node
-                            let jump_points =
-                                self.successors(grid, Some(node), &jumped_node, goal);
+                            let jump_points = self.successors(grid, Some(node), &jumped_node, goal);
 
                             // Extend the successors with the neighbours of the unforced node, correcting the
                             // cost to include the cost from parent_node to jumped_node

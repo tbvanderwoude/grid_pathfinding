@@ -23,7 +23,7 @@ fn dao_bench<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(c: &mut Criter
     for pruning in arr {
         for name in bench_set {
             let (bool_grid, scenarios) = get_benchmark(name.to_owned());
-            let mut pathing_grid: Pathfinder<ALLOW_DIAGONAL> =
+            let mut pathing_grid: Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS> =
                 Pathfinder::new(bool_grid.width, bool_grid.height, true);
             pathing_grid.grid.grid = bool_grid.clone();
             pathing_grid.set_improved_pruning(pruning);
@@ -36,13 +36,16 @@ fn dao_bench<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(c: &mut Criter
             } else {
                 "no corner-cutting"
             };
-            c.bench_function(format!("{name}, {diag_str}{improved_str} {corner_str}").as_str(), |b| {
-                b.iter(|| {
-                    for (start, end, _) in &scenarios {
-                        black_box(pathing_grid.get_path_single_goal(*start, *end));
-                    }
-                })
-            });
+            c.bench_function(
+                format!("{name}, {diag_str}{improved_str} {corner_str}").as_str(),
+                |b| {
+                    b.iter(|| {
+                        for (start, end, _) in &scenarios {
+                            black_box(pathing_grid.get_path_single_goal(*start, *end));
+                        }
+                    })
+                },
+            );
         }
     }
 }
@@ -98,7 +101,7 @@ fn dao_bench_jps<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(c: &mut Cr
         dao_bench_solver(
             c,
             format!("JPS{improved_str}").as_str(),
-            |pathing_grid: &mut PathingGrid<ALLOW_DIAGONAL,CUT_CORNERS>| {
+            |pathing_grid: &mut PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>| {
                 let mut solver = JPSSolver::new(&pathing_grid, pruning);
                 solver.initialize(&pathing_grid);
                 solver
@@ -118,5 +121,5 @@ fn dao_bench_dijkstra<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, dao_bench_jps<true,true>, dao_bench_jps<true,false>);
+criterion_group!(benches, dao_bench<true,true>, dao_bench<true,false>);
 criterion_main!(benches);

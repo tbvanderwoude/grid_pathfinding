@@ -25,7 +25,7 @@ fn random_grid<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
 }
 
 fn visualize_grid<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(
-    grid: &PathingGrid<ALLOW_DIAGONAL,CUT_CORNERS>,
+    grid: &PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
     start: &Point,
     end: &Point,
 ) {
@@ -57,7 +57,7 @@ fn reachable_fuzzer<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>() {
         smallvec![false]
     };
     for improved_pruning in arr {
-        let mut random_grids: Vec<PathingGrid<ALLOW_DIAGONAL,CUT_CORNERS>> = Vec::new();
+        let mut random_grids: Vec<PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>> = Vec::new();
         for _ in 0..N_GRIDS {
             random_grids.push(random_grid(N, N, &mut rng))
         }
@@ -93,7 +93,7 @@ fn distance_fuzzer<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>() {
         smallvec![false]
     };
     for improved_pruning in arr {
-        let mut random_grids: Vec<PathingGrid<ALLOW_DIAGONAL,CUT_CORNERS>> = Vec::new();
+        let mut random_grids: Vec<PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>> = Vec::new();
         for _ in 0..N_GRIDS {
             random_grids.push(random_grid(N, N, &mut rng))
         }
@@ -165,11 +165,11 @@ fn fuzz_reachable() {
 
 #[test]
 fn fuzz_reachable_diagonal() {
-    reachable_fuzzer::<true,false>()
+    reachable_fuzzer::<true, false>()
 }
 #[test]
 fn fuzz_reachable_diagonal_cc() {
-    reachable_fuzzer::<true,true>()
+    reachable_fuzzer::<true, true>()
 }
 #[test]
 fn fuzz_distance() {
