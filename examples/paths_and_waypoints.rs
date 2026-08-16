@@ -1,8 +1,7 @@
-use grid_pathfinding::{waypoints_to_path, PathingGrid};
-use grid_util::grid::ValueGrid;
-use grid_util::point::Point;
+use grid_pathfinding::{waypoints_to_path, Pathfinder};
+use grid_util::{grid::ValueGrid, point::Point};
 
-// This example illustrates the difference between waypoints and paths.
+// Illustrates the difference between waypoints and paths.
 // A path is found on a 5x5 grid with shape
 // -----
 // |S    |
@@ -20,13 +19,13 @@ use grid_util::point::Point;
 // path, as a shorthand for the two previous calls.
 
 fn main() {
-    let mut pathing_grid: PathingGrid = PathingGrid::new(5, 5, false);
+    let mut pathing_grid: Pathfinder<true> = Pathfinder::new(5, 5, false);
     pathing_grid.set(1, 1, true);
     pathing_grid.generate_components();
     println!("{}", pathing_grid);
     let start = Point::new(0, 0);
     let end = Point::new(4, 4);
-    if let Some(path) = pathing_grid.get_waypoints_single_goal(start, end, false) {
+    if let Some(path) = pathing_grid.get_waypoints_single_goal(start, end) {
         println!("Waypoints:");
         for p in &path {
             println!("{:?}", p);
@@ -37,9 +36,7 @@ fn main() {
         }
     }
     println!("\nDirectly computed path");
-    let expanded_path = pathing_grid
-        .get_path_single_goal(start, end, false)
-        .unwrap();
+    let expanded_path = pathing_grid.get_path_single_goal(start, end).unwrap();
     for p in expanded_path {
         println!("{:?}", p);
     }
