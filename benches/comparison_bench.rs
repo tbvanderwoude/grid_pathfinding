@@ -2,7 +2,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use grid_pathfinding::{
     pathing_grid::PathingGrid,
     solver::{astar::AstarSolver, dijkstra::DijkstraSolver, jps::JPSSolver, GridSolver},
-    Pathfinder,
+    Pathfinder, DEFAULT_CUT_CORNERS,
 };
 use grid_pathfinding_benchmark::*;
 use grid_util::grid::ValueGrid;
@@ -11,7 +11,7 @@ use std::hint::black_box;
 
 fn dao_bench<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     let arr: SmallVec<[bool; 2]> = if ALLOW_DIAGONAL {
-        smallvec![false,true]
+        smallvec![false, true]
     } else {
         smallvec![false]
     };
@@ -31,8 +31,12 @@ fn dao_bench<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
             pathing_grid.generate_components();
             let diag_str = if ALLOW_DIAGONAL { "8-grid" } else { "4-grid" };
             let improved_str = if pruning { " (improved pruning)" } else { "" };
-
-            c.bench_function(format!("{name}, {diag_str}{improved_str}").as_str(), |b| {
+            let corner_str = if DEFAULT_CUT_CORNERS {
+                "corner-cutting"
+            } else {
+                "no corner-cutting"
+            };
+            c.bench_function(format!("{name}, {diag_str}{improved_str} {corner_str}").as_str(), |b| {
                 b.iter(|| {
                     for (start, end, _) in &scenarios {
                         black_box(pathing_grid.get_path_single_goal(*start, *end));
@@ -64,20 +68,28 @@ fn dao_bench_solver<const ALLOW_DIAGONAL: bool, S, FS>(
         pathing_grid.generate_components();
         let solver = create_solver(&mut pathing_grid);
         let diag_str = if ALLOW_DIAGONAL { "8-grid" } else { "4-grid" };
+        let corner_str = if DEFAULT_CUT_CORNERS {
+            "corner-cutting"
+        } else {
+            "no corner-cutting"
+        };
 
-        c.bench_function(format!("{name}, {solver_name} {diag_str}").as_str(), |b| {
-            b.iter(|| {
-                for (start, end, _) in &scenarios {
-                    black_box(solver.get_path_single_goal(&mut pathing_grid, *start, *end));
-                }
-            })
-        });
+        c.bench_function(
+            format!("{name}, {solver_name} {diag_str} {corner_str}").as_str(),
+            |b| {
+                b.iter(|| {
+                    for (start, end, _) in &scenarios {
+                        black_box(solver.get_path_single_goal(&mut pathing_grid, *start, *end));
+                    }
+                })
+            },
+        );
     }
 }
 
 fn dao_bench_jps<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     let arr: SmallVec<[bool; 2]> = if ALLOW_DIAGONAL {
-        smallvec![false,true]
+        smallvec![false, true]
     } else {
         smallvec![false]
     };
@@ -106,5 +118,5 @@ fn dao_bench_dijkstra<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, dao_bench<true>, dao_bench_jps<true>);
+criterion_group!(benches, dao_bench_jps<true>, dao_bench<true>);
 criterion_main!(benches);

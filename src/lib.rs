@@ -77,11 +77,10 @@ pub struct Pathfinder<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool = DEFA
     pub grid: PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>,
 }
 
-impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> Pathfinder<ALLOW_DIAGONAL,CUT_CORNERS>{
-    pub fn set_improved_pruning(&mut self, improved_pruning: bool){
+impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS> {
+    pub fn set_improved_pruning(&mut self, improved_pruning: bool) {
         self.solver.improved_pruning = improved_pruning;
     }
-
 }
 impl<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool> Default
     for Pathfinder<ALLOW_DIAGONAL, CUT_CORNERS>
