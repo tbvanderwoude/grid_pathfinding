@@ -2,14 +2,14 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use grid_pathfinding::{
     pathing_grid::PathingGrid,
     solver::{astar::AstarSolver, dijkstra::DijkstraSolver, jps::JPSSolver, GridSolver},
-    Pathfinder, DEFAULT_CUT_CORNERS,
+    Pathfinder,
 };
 use grid_pathfinding_benchmark::*;
 use grid_util::grid::ValueGrid;
 use smallvec::{smallvec, SmallVec};
 use std::hint::black_box;
 
-fn dao_bench<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
+fn dao_bench<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(c: &mut Criterion) {
     let arr: SmallVec<[bool; 2]> = if ALLOW_DIAGONAL {
         smallvec![false, true]
     } else {
@@ -31,7 +31,7 @@ fn dao_bench<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
             pathing_grid.generate_components();
             let diag_str = if ALLOW_DIAGONAL { "8-grid" } else { "4-grid" };
             let improved_str = if pruning { " (improved pruning)" } else { "" };
-            let corner_str = if DEFAULT_CUT_CORNERS {
+            let corner_str = if CUT_CORNERS {
                 "corner-cutting"
             } else {
                 "no corner-cutting"
@@ -47,13 +47,13 @@ fn dao_bench<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     }
 }
 
-fn dao_bench_solver<const ALLOW_DIAGONAL: bool, S, FS>(
+fn dao_bench_solver<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool, S, FS>(
     c: &mut Criterion,
     solver_name: &str,
     create_solver: FS,
 ) where
     S: GridSolver,
-    FS: Fn(&mut PathingGrid<ALLOW_DIAGONAL>) -> S,
+    FS: Fn(&mut PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS>) -> S,
 {
     let bench_set = if ALLOW_DIAGONAL {
         ["dao/arena", "dao/den312d", "dao/arena2"]
@@ -62,13 +62,13 @@ fn dao_bench_solver<const ALLOW_DIAGONAL: bool, S, FS>(
     };
     for name in bench_set {
         let (bool_grid, scenarios) = get_benchmark(name.to_owned());
-        let mut pathing_grid: PathingGrid<ALLOW_DIAGONAL> =
+        let mut pathing_grid: PathingGrid<ALLOW_DIAGONAL, CUT_CORNERS> =
             PathingGrid::new(bool_grid.width, bool_grid.height, true);
         pathing_grid.grid = bool_grid.clone();
         pathing_grid.generate_components();
         let solver = create_solver(&mut pathing_grid);
         let diag_str = if ALLOW_DIAGONAL { "8-grid" } else { "4-grid" };
-        let corner_str = if DEFAULT_CUT_CORNERS {
+        let corner_str = if CUT_CORNERS {
             "corner-cutting"
         } else {
             "no corner-cutting"
@@ -87,7 +87,7 @@ fn dao_bench_solver<const ALLOW_DIAGONAL: bool, S, FS>(
     }
 }
 
-fn dao_bench_jps<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
+fn dao_bench_jps<const ALLOW_DIAGONAL: bool, const CUT_CORNERS: bool>(c: &mut Criterion) {
     let arr: SmallVec<[bool; 2]> = if ALLOW_DIAGONAL {
         smallvec![false, true]
     } else {
@@ -98,7 +98,7 @@ fn dao_bench_jps<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
         dao_bench_solver(
             c,
             format!("JPS{improved_str}").as_str(),
-            |pathing_grid: &mut PathingGrid<ALLOW_DIAGONAL>| {
+            |pathing_grid: &mut PathingGrid<ALLOW_DIAGONAL,CUT_CORNERS>| {
                 let mut solver = JPSSolver::new(&pathing_grid, pruning);
                 solver.initialize(&pathing_grid);
                 solver
@@ -118,5 +118,5 @@ fn dao_bench_dijkstra<const ALLOW_DIAGONAL: bool>(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, dao_bench_jps<true>, dao_bench<true>);
+criterion_group!(benches, dao_bench_jps<true,true>, dao_bench_jps<true,false>);
 criterion_main!(benches);
