@@ -1,8 +1,7 @@
 use grid_pathfinding::{waypoints_to_path, Pathfinder};
-use grid_util::grid::ValueGrid;
-use grid_util::point::Point;
+use grid_util::{grid::ValueGrid, point::Point};
 
-// This example illustrates the difference between waypoints and paths.
+// Illustrates the difference between waypoints and paths.
 // A path is found on a 5x5 grid with shape
 // -----
 // |S    |

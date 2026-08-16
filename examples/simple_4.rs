@@ -1,8 +1,7 @@
 use grid_pathfinding::Pathfinder;
-use grid_util::grid::ValueGrid;
-use grid_util::point::Point;
+use grid_util::{grid::ValueGrid, point::Point};
 
-// In this example a path is found on a 3x3 grid with shape
+// A path is found on a 3x3 grid with shape
 //  ___
 // |S  |
 // | # |
@@ -13,7 +12,7 @@ use grid_util::point::Point;
 // - S marks the start
 // - E marks the end
 //
-// Nodes have a 4-neighborhood
+// Diagonal moves are not allowed
 
 fn main() {
     let mut pathing_grid: Pathfinder<false> = Pathfinder::new(3, 3, false);

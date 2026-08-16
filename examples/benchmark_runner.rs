@@ -1,7 +1,6 @@
 use grid_pathfinding::Pathfinder;
 use grid_pathfinding_benchmark::*;
-use grid_util::grid::ValueGrid;
-use grid_util::point::Point;
+use grid_util::{grid::ValueGrid, point::Point};
 use std::time::{Duration, Instant};
 
 fn main() {

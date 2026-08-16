@@ -1,8 +1,7 @@
 use grid_pathfinding::Pathfinder;
-use grid_util::grid::ValueGrid;
-use grid_util::point::Point;
+use grid_util::{grid::ValueGrid, point::Point};
 
-// In this example a path is found to one of two goals on a 3x3 grid with shape
+// A path is found to one of two goals on a 3x3 grid with shape
 //  ___
 // |S G|
 // | # |
@@ -15,7 +14,7 @@ use grid_util::point::Point;
 // The found path moves to the closest goal, which is the top one.
 
 fn main() {
-    let mut pathing_grid: Pathfinder<true> = Pathfinder::new(3, 3, false);
+    let mut pathing_grid: Pathfinder<true, true> = Pathfinder::new(3, 3, false);
     pathing_grid.set(1, 1, true);
     pathing_grid.generate_components();
     println!("{}", pathing_grid);
